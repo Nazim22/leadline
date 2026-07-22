@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/use-receipt.schema.json",
+  "title": "Leadline Use Receipt",
+  "description": "The execution result for one contract step. A step advances ONLY when satisfied=true. Invocation alone never satisfies — that is the anti-gate-gaming guarantee. Separate from the contract (obligation vs result).",
+  "type": "object",
+  "required": ["schema_version", "contract_id", "step_id", "provider", "invoked", "result_nonempty", "relevant", "freshness_ok", "satisfied", "failure"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "contract_id": { "type": "string" },
+    "step_id": { "type": "string" },
+    "provider": { "type": "string" },
+    "invoked": { "type": "boolean" },
+    "result_nonempty": { "type": "boolean" },
+    "relevant": { "type": "boolean", "description": "Result references at least one of the step's satisfaction.requires_relevance_to tokens." },
+    "freshness_ok": { "type": "boolean" },
+    "satisfied": { "type": "boolean", "description": "AND of the step's satisfaction criteria. The ONLY signal that advances the contract or feeds learning." },
+    "failure": { "type": "string", "enum": ["none", "empty", "irrelevant", "stale", "error"], "description": "Why the step did not satisfy (none = satisfied)." },
+    "detail": {
+      "type": "object",
+      "properties": {
+        "returned_ids": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string" }
+      }
+    },
+    "latency_ms": { "type": "number" }
+  }
+}

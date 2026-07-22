@@ -1,0 +1,18 @@
+{"id": "eval-h-01", "prompt": "what did we decide about the retry budget?", "gold_route": ["historical"], "kind": "pair-hist-struct"}
+{"id": "eval-s-01", "prompt": "who calls chargeCard?", "gold_route": ["structural"], "kind": "pair-hist-struct"}
+{"id": "eval-h-02", "prompt": "did we decide to cache tokens?", "gold_route": ["historical"], "kind": "pair-hist-struct"}
+{"id": "eval-s-02", "prompt": "did we call refund() from the webhook handler?", "gold_route": ["structural"], "note": "'did we' but the verb is 'call' → structural, not historical. Guards hist-did-we over-breadth.", "kind": "pair-hist-struct"}
+{"id": "eval-h-03", "prompt": "what did we deploy in the last release?", "gold_route": ["historical"], "kind": "pair-hist-runtime"}
+{"id": "eval-r-01", "prompt": "what is deployed right now?", "gold_route": ["runtime"], "kind": "pair-hist-runtime"}
+{"id": "eval-s-03", "prompt": "who imports the config loader?", "gold_route": ["structural"], "kind": "pair-struct-repo"}
+{"id": "eval-p-01", "prompt": "show the exact line where the config is loaded", "gold_route": ["repository"], "kind": "pair-struct-repo"}
+{"id": "eval-r-02", "prompt": "is the fleet-hub responding now?", "gold_route": ["runtime"], "kind": "pair-runtime-hist"}
+{"id": "eval-h-04", "prompt": "was the fleet-hub alive during the incident?", "gold_route": ["historical"], "note": "Past state = recall of history, not a live probe.", "kind": "pair-runtime-hist"}
+{"id": "eval-neg-01", "prompt": "tell me what we decided about RLS, but don't check whether it's deployed", "gold_route": ["historical"], "note": "Clause-scoped negation suppresses runtime; not global abstention.", "kind": "negation"}
+{"id": "eval-cmp-01", "prompt": "find callers of settle() then show its exact body", "gold_route": ["structural", "repository"], "kind": "compound"}
+{"id": "eval-cmp-02", "prompt": "is the lambda live, and what did we change in the last deploy?", "gold_route": ["runtime", "historical"], "note": "Reversed compound (runtime first).", "kind": "compound-reversed"}
+{"id": "eval-p-02", "prompt": "what does line 40 of deploy.yml say?", "gold_route": ["repository"], "kind": "repository"}
+{"id": "eval-s-04", "prompt": "where is performSync defined?", "gold_route": ["structural"], "kind": "structural"}
+{"id": "eval-ab-01", "prompt": "what do you think we should build next?", "gold_route": [], "note": "Opinion/creation → abstain.", "kind": "abstain"}
+{"id": "eval-ab-02", "prompt": "clean up this function", "gold_route": [], "note": "Action with no evidence obligation → abstain.", "kind": "abstain"}
+{"id": "eval-cmp-03", "prompt": "did we ship promotions, and where is applyPromo defined?", "gold_route": ["historical", "structural"], "kind": "compound"}

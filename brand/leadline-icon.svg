@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Leadline">
+  <!-- Leadline mark: a sounding line dropping through two waves into a faceted weight; the lower wave bends into a check.
+       Monochrome, currentColor, favicon-safe. -->
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- the sounding line (vertical) -->
+    <line x1="32" y1="6" x2="32" y2="40"/>
+    <!-- upper wave -->
+    <path d="M14 24 q9 -7 18 0 q9 7 18 0"/>
+    <!-- lower wave, its right arm bends up into a check -->
+    <path d="M14 36 q9 -7 18 0 l7 8 12 -14"/>
+  </g>
+  <!-- faceted weight (the lead), reached at the bottom of the line -->
+  <path d="M32 40 l7 8 -7 8 -7 -8 z" fill="currentColor"/>
+</svg>

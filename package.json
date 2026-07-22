@@ -1,0 +1,15 @@
+{
+  "name": "leadline",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Evidence control plane for coding agents — routes each question to the right source, enforces the evidence path, and records use receipts.",
+  "license": "MIT",
+  "bin": {
+    "leadline": "./bin/leadline.js"
+  },
+  "files": ["bin", "schema", "policy", "docs"],
+  "keywords": ["ai-agents", "coding-agents", "tool-routing", "evidence", "claude-code", "hooks"],
+  "engines": {
+    "node": ">=18"
+  }
+}

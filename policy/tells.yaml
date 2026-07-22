@@ -1,0 +1,26 @@
+# Leadline deterministic tells — Stage 1, high-precision only.
+# Each tell: stable id, the family it contributes, phrases, and whether it is terminal
+# (alone decides the route) or contributing (may combine into a multi-step plan).
+# Conflicts NEVER silently fall through — two matching families produce an ordered plan.
+policy_version: route-v0
+
+tells:
+  - id: hist-did-we
+    family: historical
+    terminal: true
+    phrases: ["did we", "have we shipped", "what did we decide", "where did we leave", "previously", "is x done", "did we build"]
+  - id: struct-callers
+    family: structural
+    terminal: true
+    phrases: ["callers of", "callees of", "who imports", "depends on", "blast radius", "where is * defined", "impact of"]
+  - id: repo-bytes
+    family: repository
+    terminal: true
+    phrases: ["exact contents", "show the file", "what does line", "literal value", "git diff", "bytes", "line * of"]
+  - id: runtime-alive
+    family: runtime
+    terminal: true
+    phrases: ["is * alive", "currently deployed", "health", "responding", "running now", "what version is installed", "is * live"]
+
+# Negative guards — phrases that must NOT trigger a family (parked; grow from the corpus).
+negatives: []

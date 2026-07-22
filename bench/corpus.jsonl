@@ -1,0 +1,8 @@
+{"id": "fail-001", "prompt": "did we build the tool-router?", "gold_route": ["historical"], "note": "Real failure trace: agent nearly spawned a code-scout to re-derive build-state gbrain already held. Must route historical first.", "kind": "build-state"}
+{"id": "fail-002", "prompt": "show me the callers of frameSign in the connector", "gold_route": ["structural"], "note": "Real failure trace: agent fired an empty graphify call to unlock grep (gate-gaming). Structural need must be satisfied by a real graph result, not an invocation.", "kind": "gate-gaming"}
+{"id": "multi-001", "prompt": "did we ship the graph-gate fix, and is it live?", "gold_route": ["historical", "runtime"], "note": "Not mutually exclusive: recall the shipped claim, then verify runtime state.", "kind": "multi-intent"}
+{"id": "multi-002", "prompt": "find callers of chargeCard then show me its exact implementation", "gold_route": ["structural", "repository"], "note": "Structure first, then literal bytes.", "kind": "multi-intent"}
+{"id": "neg-001", "prompt": "add a docstring to chargeCard, don't check whether it's deployed", "gold_route": ["repository"], "note": "Negation: 'deployed' appears but is explicitly excluded from the ask.", "kind": "negation"}
+{"id": "runtime-001", "prompt": "is the cstoregenie lambda responding right now?", "gold_route": ["runtime"], "note": "Live probe, not recall.", "kind": "runtime"}
+{"id": "hist-001", "prompt": "what did we decide about neon minimum CU?", "gold_route": ["historical"], "note": "Past decision → recall store.", "kind": "recall"}
+{"id": "abstain-001", "prompt": "make it better", "gold_route": [], "note": "Ambiguous, no evidence obligation → abstain, do not force a route.", "kind": "abstain"}

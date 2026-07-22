@@ -1,0 +1,18 @@
+# Leadline route families → provider adapters.
+# Generic, publishable evidence families. Providers are the ONLY tool-specific part —
+# swap them to adapt Leadline to any agent stack. Leadline never hardcodes a provider.
+policy_version: route-v0
+
+families:
+  historical:
+    question: "What was decided / built / shipped / documented?"
+    provider: gbrain          # any recall/knowledge store
+  structural:
+    question: "What calls / imports / depends on what?"
+    provider: graphify        # any code graph
+  repository:
+    question: "What exact bytes / config / code currently exist?"
+    provider: grep            # grep / read / git
+  runtime:
+    question: "What is alive / deployed / responding now?"
+    provider: cli-probe       # CLI / API / health check

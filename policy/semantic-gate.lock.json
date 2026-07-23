@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "status": "locked",
+  "lock_version": "semantic-gate-v1",
+  "locked_at": "2026-07-23T04:33:49.023Z",
+  "source_revision": "72eeb383a71ffe3b235dd4aa29669c79220aea96",
+  "classifier_fingerprint": "semantic-646b5ae331f9cd9c",
+  "exemplar_version": "exemplars-v0",
+  "exemplar_sha256": "6981fcb3cf5dd96fc61e3420ea1da8b968a00dadf2cb5a2891cf6d1389a2880f",
+  "embed_model_identity": "ollama:bge-m3:latest@7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+  "normalization": "nfkc-ws-v1",
+  "similarity": "cosine-l2-v1",
+  "topk": 5,
+  "agreement_fraction": 0.6,
+  "family_floors": {
+    "historical": 0.65,
+    "repository": 0.65,
+    "runtime": 0.65,
+    "structural": 0.35
+  },
+  "family_margins": {
+    "historical": 0,
+    "repository": 0,
+    "runtime": 0.06,
+    "structural": 0.16
+  },
+  "abstain_veto_margin": 0.12,
+  "context_policy": "current-turn-only-v1",
+  "objective_version": "stage2.1-calibration-v1",
+  "objective_sha256": "ac851e925732fc15e6a2d6aab8fc01db7007c2069dd5e3c0fc101029ecfde05f",
+  "search_version": "stage2.1-coordinate-v1",
+  "search_sha256": "2ea1e861d8a2d1ec7e3c9c2c8e2a2f8008abe18c0903eca177f7043397d0102d",
+  "calibration_corpus_sha256": "7639f22feddf7f453ae06febbf9d7c19c4e4863d70fdd3aa953bf71d23681292",
+  "calibration_labels_sha256": "1f3b1dd8bd38f385e04b9c65d8f27eee772b72d84da52a4284389b14918490a5",
+  "calibration_metrics": {
+    "counts": {
+      "total": 200,
+      "gold_routed": 76,
+      "gold_abstain": 124,
+      "predicted_routed": 4,
+      "correct_first_family": 4,
+      "false_routes_on_true_abstains": 0,
+      "exact_plan": 127
+    },
+    "routed_evidence_request_recall": 0.05263157894736842,
+    "routed_first_family_precision": 1,
+    "false_route_rate_on_true_abstains": 0,
+    "gold_abstention_recall": 1,
+    "exact_plan_rate": 0.635,
+    "macro_first_family_recall": 0.04047619047619048,
+    "per_family": {
+      "historical": {
+        "gold": 42,
+        "correct": 3,
+        "predicted": 3,
+        "recall": 0.07142857142857142,
+        "precision": 1
+      },
+      "structural": {
+        "gold": 0,
+        "correct": 0,
+        "predicted": 0,
+        "recall": null,
+        "precision": null
+      },
+      "repository": {
+        "gold": 14,
+        "correct": 0,
+        "predicted": 0,
+        "recall": 0,
+        "precision": null
+      },
+      "runtime": {
+        "gold": 20,
+        "correct": 1,
+        "predicted": 1,
+        "recall": 0.05,
+        "precision": 1
+      }
+    }
+  },
+  "calibration_family_support": {
+    "historical": 42,
+    "structural": 0,
+    "repository": 14,
+    "runtime": 20
+  },
+  "evaluated_configurations": 1233,
+  "eval1_used": false,
+  "eval2_opened": false
+}

@@ -16,7 +16,7 @@ function decompose(prompt) {
   if (typeof prompt !== 'string') throw new TypeError('prompt must be a string');
   if (!prompt.trim()) return [];
 
-  const boundaries = /\s+(?:and\s+)?then\s+|,\s*(?:and|but)\s+|;\s*|\s+and\s+(?=(?:is|are|was|were|what|where|who|show|find|check|did|does|do|has|have|can|will)\b)/giu;
+  const boundaries = /,?\s+(?:and\s+)?then\s+|,\s*(?:and|but)\s+|;\s*|\s+and\s+(?=(?:is|are|was|were|what|where|who|show|find|check|did|does|do|has|have|can|will)\b)/giu;
   const clauses = [];
   let cursor = 0;
   let match;

@@ -4,7 +4,7 @@
   "title": "Leadline Evidence Route Contract",
   "description": "The ordered, auditable plan Leadline emits per turn: obligations only. Execution results live in use-receipt.schema.json. A step is satisfied only when its machine-readable satisfaction criteria are met — never by mere invocation.",
   "type": "object",
-  "required": ["schema_version", "contract_id", "turn_id", "question", "steps", "ordered_route", "abstained"],
+  "required": ["schema_version", "contract_id", "turn_id", "question", "steps", "ordered_route", "complete", "unmatched_clauses", "abstained"],
   "properties": {
     "schema_version": { "const": "1.0" },
     "contract_id": { "type": "string", "description": "Stable id for this contract instance." },
@@ -54,7 +54,7 @@
             "required": ["requires_nonempty", "requires_relevance_to", "freshness"],
             "properties": {
               "requires_nonempty": { "type": "boolean" },
-              "requires_relevance_to": { "type": "array", "items": { "type": "string" }, "description": "Tokens/ids the result must reference to count." },
+              "requires_relevance_to": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Tokens/ids the result must reference to count. Empty targets are invalid and must abstain." },
               "freshness": { "type": "string", "enum": ["any", "fresh"], "default": "any" }
             }
           },
@@ -68,6 +68,22 @@
       "type": "array",
       "items": { "type": "string" },
       "description": "step_id references in execution order. The single source of ordering — steps carry no order themselves."
+    },
+    "complete": { "type": "boolean", "description": "True only when every positive clause produced a target-resolved evidence obligation." },
+    "unmatched_clauses": {
+      "type": "array",
+      "description": "Positive clauses that could not become an evidence obligation. Non-empty means the plan is partial and complete=false.",
+      "items": {
+        "type": "object",
+        "required": ["index", "text", "start", "end", "reason"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "text": { "type": "string", "minLength": 1 },
+          "start": { "type": "integer", "minimum": 0 },
+          "end": { "type": "integer", "minimum": 1 },
+          "reason": { "type": "string", "enum": ["no_high_precision_tell", "unresolved_evidence_target"] }
+        }
+      }
     },
     "first_action": { "type": ["string", "null"], "description": "Derived convenience: provider of the first ordered step. Never authored independently." },
     "abstained": { "type": "boolean", "default": false },

@@ -3,10 +3,12 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const YAML = require('yaml');
-const { loadPolicy, matchPrompt } = require('./matcher');
+const { decompose } = require('./decompose');
+const { isClauseFullyExcluded, loadPolicy, matchPrompt } = require('./matcher');
 
 function extractSubject(text) {
   const patterns = [
+    /\b(port\s+\d+)\s+open\b/iu,
     /(?:callers of|callees of|importers of|references to|definition of)\s+([A-Za-z_$][\w$]*(?:\(\))?)/iu,
     /(?:who calls|who imports|where is|is the)\s+([A-Za-z_$][\w$]*(?:\(\))?)/iu,
     /line\s+\d+\s+of\s+([A-Za-z0-9_./-]+)/iu,
@@ -52,39 +54,47 @@ function createPlanner({ tellsPath, routesPath }) {
   function plan(question, options = {}) {
     if (typeof question !== 'string') throw new TypeError('question must be a string');
     const turnId = options.turnId || `turn-${hash(question)}`;
+    const clauses = decompose(question);
     const matches = matchPrompt(question, tells);
-    const byFamily = new Map();
+    const byClauseAndFamily = new Map();
 
     for (const match of matches) {
-      if (!byFamily.has(match.family)) {
-        byFamily.set(match.family, { family: match.family, first: match, matches: [] });
+      const key = `${match.clause.index}\0${match.family}`;
+      if (!byClauseAndFamily.has(key)) {
+        byClauseAndFamily.set(key, { family: match.family, first: match, matches: [] });
       }
-      byFamily.get(match.family).matches.push(match);
+      byClauseAndFamily.get(key).matches.push(match);
     }
 
-    const obligations = [...byFamily.values()].sort((a, b) => a.first.span.start - b.first.span.start);
+    const obligations = [...byClauseAndFamily.values()].sort((a, b) => a.first.span.start - b.first.span.start);
+    const steps = [];
+    const unresolvedClauseIndices = new Set();
     let previousAnchor = null;
-    const steps = obligations.map((obligation, index) => {
+
+    for (const obligation of obligations) {
       const route = routes.families[obligation.family];
       if (!route || !route.provider) throw new Error(`no provider configured for family: ${obligation.family}`);
       const clause = obligation.first.clause.text;
-      let subject = extractSubject(clause);
+      let subject = extractSubject(obligation.first.text) || extractSubject(clause);
       let relevanceTokens = extractRelevanceTokens(clause, subject);
       const isPronounFollowUp = /\b(?:it|this|that|they|them|its|their)\b/iu.test(clause);
       if (relevanceTokens.length === 0 && isPronounFollowUp && previousAnchor) {
         relevanceTokens = previousAnchor.tokens;
         subject = previousAnchor.subject;
       }
-      if (relevanceTokens.length > 0) {
-        previousAnchor = { subject: subject || relevanceTokens.join(' '), tokens: relevanceTokens };
+      if (relevanceTokens.length === 0) {
+        unresolvedClauseIndices.add(obligation.first.clause.index);
+        continue;
       }
+
+      previousAnchor = { subject: subject || relevanceTokens.join(' '), tokens: relevanceTokens };
       const tellIds = [...new Set(obligation.matches.map((match) => match.id))];
-      return {
-        step_id: `route-${index + 1}`,
+      steps.push({
+        step_id: `route-${steps.length + 1}`,
         need: obligation.family,
         provider: route.provider,
         evidence_target: {
-          subject: subject || (relevanceTokens.length > 0 ? relevanceTokens.join(' ') : null),
+          subject: subject || relevanceTokens.join(' '),
           question: clause.trim(),
         },
         satisfaction: {
@@ -95,10 +105,24 @@ function createPlanner({ tellsPath, routesPath }) {
         confidence: 1,
         classified_by: `tell:${tellIds.join(',')}`,
         source_scope: null,
-      };
-    });
+      });
+    }
 
+    const matchedClauseIndices = new Set(matches.map((match) => match.clause.index));
+    const unmatchedClauses = clauses.flatMap((clause, index) => {
+      if (unresolvedClauseIndices.has(index)) {
+        return [{ index, text: clause.text, start: clause.start, end: clause.end, reason: 'unresolved_evidence_target' }];
+      }
+      if (matchedClauseIndices.has(index) || isClauseFullyExcluded(clause, tells)) return [];
+      return [{ index, text: clause.text, start: clause.start, end: clause.end, reason: 'no_high_precision_tell' }];
+    });
     const abstained = steps.length === 0;
+    const abstainReason = abstained
+      ? (unmatchedClauses.some((clause) => clause.reason === 'unresolved_evidence_target')
+        ? 'unresolved_evidence_target'
+        : 'no_high_precision_tell')
+      : null;
+
     return {
       schema_version: '1.0',
       contract_id: `contract-${hash(`${turnId}\0${question}\0${policyVersion}`)}`,
@@ -107,9 +131,11 @@ function createPlanner({ tellsPath, routesPath }) {
       policy_version: policyVersion,
       steps,
       ordered_route: steps.map((step) => step.step_id),
+      complete: unmatchedClauses.length === 0,
+      unmatched_clauses: unmatchedClauses,
       first_action: steps[0]?.provider || null,
       abstained,
-      abstain_reason: abstained ? 'no_high_precision_tell' : null,
+      abstain_reason: abstainReason,
     };
   }
 

@@ -10,7 +10,11 @@ function evaluateSatisfaction(criteria, result) {
     return { satisfied: false, failure: 'empty' };
   }
 
-  const relevant = required.length === 0 || required.some((token) => references.includes(token));
+  if (required.length === 0) {
+    return { satisfied: false, failure: 'irrelevant' };
+  }
+
+  const relevant = required.some((token) => references.includes(token));
   if (!relevant) {
     return { satisfied: false, failure: 'irrelevant' };
   }

@@ -3,7 +3,7 @@
 # '*' = wildcard span), and terminal (alone decides) vs contributing (may combine).
 # Conflicts NEVER silently fall through — two families matching → an ordered plan.
 # Precision > recall here: a phrase belongs only if it is almost never the other family.
-policy_version: route-v0.2
+policy_version: route-v0.3
 
 tells:
   # ---- historical: require a decision/ship/session verb, NOT bare "did we" ----
@@ -36,7 +36,7 @@ tells:
   - id: runtime-state
     family: runtime
     terminal: true
-    phrases: ["running now", "currently deployed", "is deployed", "is it live", "which version is live", "what version is deployed", "health endpoint", "is * responding", "responding now", "alive now", "live right now", "port * open", "is the * up"]
+    phrases: ["running now", "currently deployed", "is deployed", "is it live", "it is live", "which version is live", "what version is deployed", "health endpoint", "is * responding", "responding now", "alive now", "live right now", "port * open", "is the * up"]
 
 # Clause-scoped exclusions. When a clause contains an exclude phrase, the named family
 # is suppressed FOR THAT CLAUSE only — not a global abstention.
@@ -44,5 +44,5 @@ tells:
 negatives:
   - id: neg-not-runtime
     excludes: runtime
-    when_clause_contains: ["don't check", "do not check", "not asking whether", "no need to check", "without checking"]
+    when_clause_contains: ["don't check runtime", "do not check runtime", "skip runtime check", "without checking runtime", "don't check whether it's deployed", "don't check whether it's currently deployed", "do not check whether it's deployed", "do not check whether it's currently deployed", "don't check if it's deployed", "don't check if it's currently deployed", "do not check if it's deployed", "do not check if it's currently deployed", "don't verify deployment", "do not verify deployment", "not asking whether it's live", "no need to check whether it's live"]
     scope: clause

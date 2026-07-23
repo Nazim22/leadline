@@ -37,6 +37,20 @@ test('suppresses only the negated clause family', () => {
   assert.deepEqual(matches.map((match) => match.family), ['historical']);
 });
 
+test('does not let an unrelated negative object suppress a legitimate runtime tell', () => {
+  const policy = loadPolicy(policyPath);
+  const matches = matchPrompt("don't check callers, just see if it is live", policy);
+
+  assert.deepEqual(matches.map((match) => match.family), ['runtime']);
+});
+
+test('suppresses only the negated runtime span when the same clause has positive runtime work', () => {
+  const policy = loadPolicy(policyPath);
+  const matches = matchPrompt("don't check whether it's deployed, just check port 443 open", policy);
+
+  assert.deepEqual(matches.map((match) => [match.family, match.text]), [['runtime', 'port 443 open']]);
+});
+
 test('preserves first occurrence order across multiple evidence families', () => {
   const policy = loadPolicy(policyPath);
   const matches = matchPrompt(

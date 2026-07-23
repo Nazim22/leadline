@@ -20,12 +20,13 @@ Routing accuracy is not the anti-gaming claim. These cases pair a step's `satisf
 Also compare a plain embedding nearest-route **for classification only** — not graded on enforcement it doesn't claim.
 
 ## Metrics reported (all of them, including misses; sample size labeled prominently)
-- first-evidence-route accuracy
-- full ordered-plan exact-match
-- bypass / gate-gaming satisfaction rate (must be 0 — an empty call never satisfies)
-- false-block rate
-- abstention rate
-- multi-intent recall
+- first-evidence-route accuracy over cases whose gold plan is non-empty (`N routed` is printed separately; correct abstentions do not inflate it)
+- full ordered-plan exact-match over all cases (a non-empty route with `complete=false` is a miss; correct empty-route abstentions still count)
+- gate-gaming bypass rate over expected `empty`/`irrelevant` failures only
+- freshness rejection rate over expected `stale` failures
+- false-block rate over cases expected to satisfy
+- abstention rate over all cases
+- multi-intent family recall
 - routing latency
 
 ## Run

@@ -2,38 +2,42 @@
 
 # Leadline
 
-*Your agent asks the wrong tool, or fakes the right one. Leadline stops both.*
+*Your agent asks the wrong tool, or fakes the right one. Leadline measures both failure modes before enforcement ships.*
 
-**Evidence control plane for coding agents** · routes each question to the right source · enforces the evidence path · records use receipts · local-first · no embeddings required for V0
+**Evidence control plane for coding agents** · routes each question to the right source · emits ordered evidence contracts · evaluates use receipts offline · local-first · no embeddings required for V0
 
-> Pronounced **"LED-line"** — a nautical lead line sounds unseen depth and brings back a seabed sample. It routes to ground truth *and* returns proof contact happened.
+> Pronounced **"LED-line"** — a nautical lead line sounds unseen depth and brings back a seabed sample. It routes to ground truth *and* returns evidence that contact happened.
 
 ---
 
-Coding agents pick tools by willpower. They trust stale context, and they fake tool calls to satisfy gates — a published failure mode: **tool-call hacking**. Deny-only gates say "not that path"; they never say "here's the right one," and they can be gamed.
+Coding agents pick tools by willpower. They trust stale context, and they can fake tool calls to satisfy gates — a published failure mode: **tool-call hacking**. Deny-only gates say "not that path"; they never say "here's the right one," and they can be gamed.
 
-Leadline classifies what kind of evidence a request needs — **history, code structure, repository bytes, or live runtime** — routes the agent to the authoritative source, blocks evidence-path bypasses, and records whether the tool produced *usable* evidence. Unlike a semantic router, it doesn't merely *select* a tool; it **enforces and audits the evidence path.**
+Leadline classifies what kind of evidence a request needs — **history, code structure, repository bytes, or live runtime** — and emits an ordered contract pointing at the authoritative source. V0 measures route quality and use-receipt satisfaction. **Hook enforcement and live receipt capture are not shipped yet.**
 
 ## Before / after
 
 You ask: *"did we build the retry logic, and is it live?"*
 
-Without Leadline, the agent spawns a code-scout to re-derive what your knowledge base already knows, then greps for deploy state.
+Without Leadline, the agent may spawn a code scout to re-derive what your knowledge base already knows, then grep for deploy state.
 
-With Leadline:
+With Leadline V0:
 ```
 Need: historical → runtime
   1. historical  → recall store   (what was built)
   2. runtime     → live probe     (is it deployed)
-Do not scout or grep for documented build-state.
+Contract complete: true
 ```
 
-## What it does
+If any positive clause cannot be routed or lacks a relevance anchor, the contract says `complete: false` and lists it in `unmatched_clauses`; partial classification cannot look successful.
 
-- **Decompose** a request into ordered evidence obligations (`historical → runtime`, `structural → repository`, …) — routes aren't mutually exclusive.
+## What it does today
+
+- **Decompose** a request into ordered evidence obligations (`historical → runtime`, `structural → repository`, …) — routes are not mutually exclusive.
 - **Route** each obligation to an evidence family, mapped to *your* tools via adapters.
-- **Enforce** on the agent's hook lifecycle — the wrong tool for the current obligation is blocked with a *corrective* instruction. Turn-scoped, never a session-wide unlock.
-- **Record use receipts** — did the tool return usable, relevant evidence? An empty or irrelevant call **never** advances the contract. This is the anti-gaming guarantee.
+- **Fail closed on classification gaps** — repeated same-family obligations are preserved, unresolved targets abstain, and unmatched clauses are explicit.
+- **Evaluate use-receipt criteria offline** — empty, irrelevant, or stale simulated results do not satisfy an obligation.
+
+Planned, not shipped in V0: host hooks, enforcement, provider availability arbitration, live use-receipt capture, embeddings, and adaptation.
 
 ## How it works
 
@@ -42,82 +46,90 @@ Do not scout or grep for documented build-state.
       │
       ▼
   ┌──────────────────────────────────────────────────────────┐
-  │  Leadline   (runs locally — deterministic core, no LLM)   │
+  │  Leadline V0   (local deterministic core, no LLM)         │
   │  ──────────────────────────────────────────────────────  │
-  │  decompose → tells → [embeddings*] → arbiter → contract   │
+  │  decompose → high-precision tells → ordered contract      │
   │                                                          │
-  │  4 evidence families → your provider adapters:           │
+  │  4 evidence families → provider mappings:                 │
   │    historical → recall store     structural → code graph │
   │    repository → grep/read/git    runtime    → live probe │
   └──────────────────────────────────────────────────────────┘
-      │  ordered route contract  +  use receipts
-      ▼
-  agent acts on the right source — and proves it used it
-        (*embeddings = V3, not shipped yet)
+      │
+      ├── route contract (`complete`, steps, unmatched clauses)
+      └── offline use-receipt satisfaction simulation
 ```
 
-- **Decompose** — split conjunctive asks deterministically; prefer under-splitting.
-- **Tells** — high-precision keyword rules with word boundaries, stable ids, clause-scoped negation; conflicts produce a multi-step plan, never a silent fall-through.
-- **Arbiter** — map need→provider using hard state (project, available tools, graph freshness). Provider-unavailable ≠ classifier-wrong — it records a degraded fallback with a reason.
-- **Receipts** — `empty → irrelevant → stale → satisfied`, in that order. Only a satisfied receipt advances the contract or feeds learning.
+- **Decompose** — split explicit sequencing and high-precision conjunction boundaries; prefer under-splitting.
+- **Tells** — bounded wildcard rules with exact spans, stable IDs, and span-scoped negation. Conflicts produce ordered multi-step plans.
+- **Targets** — every emitted step has a non-empty relevance anchor; unresolved targets abstain.
+- **Receipts** — evaluation order is `empty → irrelevant → stale → satisfied`. Invocation alone never counts.
 
 ## Benchmark — the honest state
 
-Leadline is measurement-first: the benchmark exists **before** enforcement does. Reproduce everything with one command:
+Leadline is measurement-first: the benchmark exists **before** enforcement does. Reproduce it with:
 
 ```bash
 npm install && npm run bench
 ```
 
-**Current results — a synthetic, self-labeled corpus (N=26). This is a scaffold baseline, NOT proof on real work.**
+**Current results — synthetic, self-labeled corpora (N=26). This is a scaffold baseline, NOT proof on real work.**
 
 | Corpus | N | first-route | exact-plan | multi-intent |
-| --- | --- | --- | --- | --- |
-| Development (tuning) | 8 | 100% | 100% | 100% |
-| **Frozen evaluation** | 18 | **72.2%** | **66.7%** | 50% |
+| --- | ---: | ---: | ---: | ---: |
+| Development (tuning) | 8 | 100.0% | 100.0% | 100.0% |
+| **Frozen evaluation** | 18 | **62.5%** | **61.1%** | 50.0% |
 
-The frozen eval is never tuned against — it honestly exposes 6 Stage-1 tell gaps (that's the *point* of a frozen set; it names the next work).
+First-route accuracy excludes gold-abstention cases and prints its routed-case denominator. A non-empty predicted route with `complete=false` cannot receive exact-plan credit. Correct empty-route abstentions still count.
+
+The frozen evaluation corpus is never tuned against. It currently exposes **7 Stage-1 misses**; the runner prints every miss and any unmatched clauses.
 
 **Anti-gate-gaming — simulated (N=7):**
 
-| Ritual call | Satisfies the need? |
-| --- | --- |
-| empty result | **NO** |
-| irrelevant non-empty result | **NO** |
-| empty-args invocation | **NO** |
-| stale result (when freshness required) | **NO** |
+| Metric | Result |
+| --- | ---: |
+| empty/irrelevant gate-gaming bypasses | **0/4** |
+| stale evidence rejected when freshness is required | **1/1** |
+| false blocks on expected-success cases | **0/2** |
 
-0/5 bypasses. This is the core guarantee — verified in `satisfaction.js`, against fixtures.
+These are deterministic fixture results from `src/satisfaction.js`, not live-agent evidence.
 
-### What "real" testing means (not done yet — the roadmap is honest about it)
+### What real testing means — not done yet
 
-The numbers above come from prompts *we* wrote and labeled. The tests that actually matter, following how modern tools benchmark (a real agent doing real work), are:
+The numbers above come from prompts we wrote and labeled. The tests that matter next are:
 
-1. **Real corpus** — hundreds of prompts harvested from real transcripts, labeled independently of whoever tuned the tells.
-2. **Live shadow run** — wire the `UserPromptSubmit` hook in a real session, log the router's verdict vs. the tool the agent *actually* reached for. No enforcement — pure measurement against reality.
-3. **Live gate-gaming test** — fire an empty tool call in a real session; confirm enforcement + the receipt block it.
+1. **Real corpus** — prompts harvested from real transcripts and labeled independently of whoever tunes the tells.
+2. **Live shadow run** — wire a host adapter into real sessions and compare Leadline's contract with the sources the agent actually uses. No enforcement first.
+3. **Live gate-gaming test** — after enforcement exists, fire empty, irrelevant, and stale calls in a real session and verify they cannot advance the contract.
 
-Until those land, the honest claim is: *a verified scaffold with a synthetic baseline* — not *it works on your real work.*
+Until those land, the honest claim is: *a verified measurement scaffold with a synthetic baseline* — not *it works on your real work.*
 
-## Install
+## Run from source
 
-`v0.0.1` — **pre-alpha, private. Not yet installable.** The intended UX:
+`v0.0.1` — **pre-alpha, private.** The repository is runnable; there is no public package release or hook installer yet.
+
 ```bash
-npx leadline init     # scaffolds hooks + a provider manifest for your stack
+npm install
+npm test
+npm run bench
+node ./bin/leadline.js route "did we ship the graph fix, and is it live?"
 ```
+
+The intended later UX is `npx leadline init`, after host adapters and enforcement ship.
 
 ## Compared to
 
-| | routes | enforces the path | proves the source was used | local | deps for core |
-| --- | --- | --- | --- | --- | --- |
-| **Leadline** | ordered evidence plan | yes (turn-scoped) | **yes — use receipts** | yes | none |
-| semantic-router | single label | no | no | yes (with local encoder) | encoder + vector store |
-| deny-only gates | — | blocks wrong path | no (gameable) | yes | none |
+| Current capability | ordered routes | enforces the path | validates source use | local |
+| --- | ---: | ---: | ---: | ---: |
+| **Leadline V0** | **yes** | no — planned | offline simulation | yes |
+| semantic-router | single label | no | no | yes with a local encoder |
+| deny-only gates | — | blocks selected paths | no; invocation may be gameable | yes |
 
-semantic-router is a fine classifier and a useful baseline; it selects a tool. Leadline enforces and audits the evidence path — a different job.
+`semantic-router` is a useful classification baseline; it selects a tool. Leadline's intended product scope is an ordered, enforceable, auditable evidence path, but V0 ships only the measurement layer.
 
 ## Design
-Full design + external review (Daedalus) in [`docs/DESIGN.md`](docs/DESIGN.md).
+
+Full design and external review notes are in [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## License
+
 MIT — see [`LICENSE`](LICENSE).

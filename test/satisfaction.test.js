@@ -24,6 +24,17 @@ test('irrelevant nonempty result never satisfies an evidence need', () => {
   );
 });
 
+test('an unresolved relevance target fails closed', () => {
+  assert.deepEqual(
+    evaluateSatisfaction({ ...base, requires_relevance_to: [] }, {
+      nonempty: true,
+      references: ['anything'],
+      fresh: true,
+    }),
+    { satisfied: false, failure: 'irrelevant' },
+  );
+});
+
 test('freshness is enforced only when the contract requires it', () => {
   assert.deepEqual(
     evaluateSatisfaction({ ...base, freshness: 'fresh' }, {

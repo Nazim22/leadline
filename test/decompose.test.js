@@ -14,6 +14,16 @@ test('splits explicit sequencing cues while preserving source order', () => {
   );
 });
 
+test('consumes a comma that belongs to a then separator', () => {
+  assert.deepEqual(
+    decompose('Who calls alpha, then show the exact file config.js'),
+    [
+      { text: 'Who calls alpha', start: 0, end: 15 },
+      { text: 'show the exact file config.js', start: 22, end: 51 },
+    ],
+  );
+});
+
 test('splits comma conjunctions used for separate evidence obligations', () => {
   assert.deepEqual(
     decompose("Tell me what we decided about RLS, but don't check whether it's deployed"),

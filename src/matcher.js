@@ -23,15 +23,43 @@ function compilePhrase(phrase) {
   return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, 'giu');
 }
 
-function clauseExclusions(clause, policy) {
+function clauseExclusionRanges(clause, policy) {
   const lower = clause.text.toLocaleLowerCase();
-  const excluded = new Set();
+  const ranges = [];
+
   for (const negative of policy.negatives) {
-    if ((negative.when_clause_contains || []).some((phrase) => lower.includes(String(phrase).toLocaleLowerCase()))) {
-      excluded.add(negative.excludes);
+    for (const rawPhrase of negative.when_clause_contains || []) {
+      const phrase = String(rawPhrase).toLocaleLowerCase();
+      let cursor = 0;
+      let start;
+      while ((start = lower.indexOf(phrase, cursor)) !== -1) {
+        ranges.push({ family: negative.excludes, start, end: start + phrase.length });
+        cursor = start + Math.max(phrase.length, 1);
+      }
     }
   }
-  return excluded;
+
+  return ranges;
+}
+
+function clauseExclusions(clause, policy) {
+  return new Set(clauseExclusionRanges(clause, policy).map((range) => range.family));
+}
+
+function isClauseFullyExcluded(clause, policy) {
+  const ranges = clauseExclusionRanges(clause, policy);
+  if (ranges.length === 0) return false;
+
+  const residual = clause.text.split('');
+  for (const range of ranges) {
+    for (let index = range.start; index < range.end; index += 1) residual[index] = ' ';
+  }
+
+  const substantive = residual.join('')
+    .replace(/[,.;:!?()[\]{}]/g, ' ')
+    .replace(/\b(?:and|but|then|just|please)\b/giu, ' ')
+    .trim();
+  return substantive.length === 0;
 }
 
 function matchPrompt(prompt, policy) {
@@ -40,14 +68,23 @@ function matchPrompt(prompt, policy) {
   const matches = [];
 
   clauses.forEach((clause, clauseIndex) => {
-    const excluded = clauseExclusions(clause, policy);
+    const excludedRanges = clauseExclusionRanges(clause, policy);
     policy.tells.forEach((tell, tellIndex) => {
-      if (excluded.has(tell.family)) return;
       (tell.phrases || []).forEach((phrase, phraseIndex) => {
         const expression = compilePhrase(phrase);
         let match;
         while ((match = expression.exec(clause.text)) !== null) {
-          const start = clause.start + match.index;
+          const localStart = match.index;
+          const localEnd = localStart + match[0].length;
+          const isExcluded = excludedRanges.some((range) => (
+            range.family === tell.family && localStart < range.end && localEnd > range.start
+          ));
+          if (isExcluded) {
+            if (match[0].length === 0) expression.lastIndex += 1;
+            continue;
+          }
+
+          const start = clause.start + localStart;
           matches.push({
             id: tell.id,
             family: tell.family,
@@ -68,4 +105,11 @@ function matchPrompt(prompt, policy) {
   return matches.map(({ _order, ...match }) => match);
 }
 
-module.exports = { compilePhrase, loadPolicy, matchPrompt };
+module.exports = {
+  clauseExclusionRanges,
+  clauseExclusions,
+  compilePhrase,
+  isClauseFullyExcluded,
+  loadPolicy,
+  matchPrompt,
+};

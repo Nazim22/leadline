@@ -23,6 +23,55 @@ function arraysEqual(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+function recalledFamilyOccurrences(gold, predicted) {
+  const remaining = new Map();
+  for (const family of predicted) remaining.set(family, (remaining.get(family) || 0) + 1);
+  let recalled = 0;
+  for (const family of gold) {
+    const count = remaining.get(family) || 0;
+    if (count > 0) {
+      recalled += 1;
+      remaining.set(family, count - 1);
+    }
+  }
+  return recalled;
+}
+
+function isRouteMiss(row) {
+  return !arraysEqual(row.gold_route, row.predicted_route)
+    || (row.gold_route.length > 0 && row.predicted_complete === false);
+}
+
+function countedRows(counts) {
+  return [...counts.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
+}
+
+function buildRouteDiagnostics(rows) {
+  const confusions = new Map();
+  const distribution = new Map();
+
+  for (const row of rows) {
+    const gold = row.gold_route[0] || '<abstain>';
+    const predicted = row.predicted_route[0] || '<abstain>';
+    distribution.set(gold, (distribution.get(gold) || 0) + 1);
+    if (gold !== predicted) {
+      const key = `${gold}\0${predicted}`;
+      confusions.set(key, (confusions.get(key) || 0) + 1);
+    }
+  }
+
+  return {
+    first_route_confusions: countedRows(confusions).map(({ key, count }) => {
+      const [gold, predicted] = key.split('\0');
+      return { gold, predicted, count };
+    }),
+    gold_route_distribution: countedRows(distribution).map(({ key, count }) => ({ route: key, count })),
+    misses: rows.filter(isRouteMiss),
+  };
+}
+
 function scoreRoutes(rows) {
   let firstRouteCorrect = 0;
   let routedCases = 0;
@@ -46,7 +95,7 @@ function scoreRoutes(rows) {
     if (gold.length > 1) {
       multiIntentCases += 1;
       multiIntentFamiliesTotal += gold.length;
-      multiIntentFamiliesRecalled += gold.filter((family) => predicted.includes(family)).length;
+      multiIntentFamiliesRecalled += recalledFamilyOccurrences(gold, predicted);
     }
   }
 
@@ -101,6 +150,51 @@ function ratio(numerator, denominator) {
   return denominator === 0 ? null : numerator / denominator;
 }
 
+function countField(rows, field) {
+  return rows.reduce((counts, row) => {
+    const value = row[field] || '<missing>';
+    counts[value] = (counts[value] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function buildRealReport(evaluation, metadata) {
+  const metric = evaluation.metrics;
+  return {
+    schema_version: 1,
+    metadata: { ...metadata },
+    metrics: {
+      sample_size: metric.sample_size,
+      first_route_accuracy: {
+        correct: metric.first_route_correct,
+        total: metric.routed_cases,
+        rate: ratio(metric.first_route_correct, metric.routed_cases),
+      },
+      full_plan_exact_match: {
+        correct: metric.full_plan_correct,
+        total: metric.sample_size,
+        rate: ratio(metric.full_plan_correct, metric.sample_size),
+      },
+      abstention_rate: {
+        abstained: metric.abstained,
+        total: metric.sample_size,
+        rate: ratio(metric.abstained, metric.sample_size),
+      },
+      multi_intent_recall: {
+        recalled: metric.multi_intent_families_recalled,
+        total: metric.multi_intent_families_total,
+        rate: ratio(metric.multi_intent_families_recalled, metric.multi_intent_families_total),
+        cases: metric.multi_intent_cases,
+      },
+    },
+    annotation_distribution: {
+      confidence: countField(evaluation.rows, 'label_confidence'),
+      context_dependency: countField(evaluation.rows, 'context_dependency'),
+    },
+    diagnostics: buildRouteDiagnostics(evaluation.rows),
+  };
+}
+
 function evaluateCorpus(filePath, planner) {
   const rows = readJsonl(filePath);
   let latencyMs = 0;
@@ -131,10 +225,7 @@ function printRouteReport(label, result) {
   console.log(`multi-intent recall: ${formatPercent(ratio(metric.multi_intent_families_recalled, metric.multi_intent_families_total))} (${metric.multi_intent_cases} cases)`);
   console.log(`routing latency: ${metric.latency_ms.toFixed(3)} ms total`);
 
-  const misses = result.rows.filter((row) => (
-    !arraysEqual(row.gold_route, row.predicted_route)
-    || (row.gold_route.length > 0 && row.predicted_complete === false)
-  ));
+  const misses = result.rows.filter(isRouteMiss);
   console.log(`misses: ${misses.length}`);
   for (const miss of misses) {
     const completeness = miss.predicted_complete === false ? ` complete=false unmatched=${JSON.stringify(miss.unmatched_clauses)}` : '';
@@ -170,4 +261,12 @@ function runBenchmark(rootDir) {
   return { dev, evaluation, satisfaction, satisfactionRows };
 }
 
-module.exports = { evaluateCorpus, readJsonl, runBenchmark, scoreRoutes, scoreSatisfaction };
+module.exports = {
+  buildRealReport,
+  buildRouteDiagnostics,
+  evaluateCorpus,
+  readJsonl,
+  runBenchmark,
+  scoreRoutes,
+  scoreSatisfaction,
+};

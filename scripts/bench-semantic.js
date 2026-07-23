@@ -7,7 +7,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { createPlanner } = require('../src/planner');
 const { createSemanticClassifier } = require('../src/semantic');
-const { embedAvailable } = require('../src/embed');
+const { embedAvailable, getEmbedModelIdentity } = require('../src/embed');
 
 const ROOT = path.join(__dirname, '..');
 const arg = (f, d) => { const i = process.argv.indexOf(f); return i > -1 ? process.argv[i + 1] : d; };
@@ -52,6 +52,8 @@ async function predictAll(planner, rows, semantic) {
 (async () => {
   if (!(await embedAvailable())) { console.error('Ollama/bge-m3 not reachable — start it first.'); process.exit(2); }
 
+  const modelIdentity = await getEmbedModelIdentity();
+
   const dev = readJsonl(path.join(ROOT, 'bench', 'dev-corpus.jsonl')).map((r) => ({ id: r.id, prompt: r.prompt, gold_route: r.gold_route }));
   const real = readJsonl(LABELED).map((r) => ({ id: r.id, prompt: r.prompt, gold_route: r.gold_route || [] }));
 
@@ -59,7 +61,7 @@ async function predictAll(planner, rows, semantic) {
   const grid = [];
   for (const threshold of [0.5, 0.55, 0.6, 0.65, 0.7]) {
     for (const margin of [0, 0.02, 0.05]) {
-      const sc = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), floors: threshold, margins: margin, cacheDir: path.join(ROOT, 'bench', '.cache') });
+      const sc = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), floors: threshold, margins: margin, cacheDir: path.join(ROOT, 'bench', '.cache'), embedModelIdentity: modelIdentity });
       const p = createPlanner({ tellsPath: path.join(ROOT, 'policy', 'tells.yaml'), routesPath: path.join(ROOT, 'policy', 'routes.yaml'), semanticClassifier: sc });
       const preds = await predictAll(p, dev, true);
       const m = score(dev, preds);
@@ -72,7 +74,7 @@ async function predictAll(planner, rows, semantic) {
 
   // --- EVAL once on frozen real corpus ---
   const tellsOnly = createPlanner({ tellsPath: path.join(ROOT, 'policy', 'tells.yaml'), routesPath: path.join(ROOT, 'policy', 'routes.yaml') });
-  const scReal = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), floors: best.threshold, margins: best.margin, cacheDir: path.join(ROOT, 'bench', '.cache') });
+  const scReal = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), floors: best.threshold, margins: best.margin, cacheDir: path.join(ROOT, 'bench', '.cache'), embedModelIdentity: modelIdentity });
   const withSemantic = createPlanner({ tellsPath: path.join(ROOT, 'policy', 'tells.yaml'), routesPath: path.join(ROOT, 'policy', 'routes.yaml'), semanticClassifier: scReal });
 
   const base = score(real, await predictAll(tellsOnly, real, false));

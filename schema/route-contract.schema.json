@@ -60,7 +60,21 @@
           },
           "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
           "classified_by": { "type": "string", "description": "'tell:<id>' | 'embedding' | 'decompose'." },
-          "source_scope": { "type": ["string", "null"], "description": "Optional corpus/scope the provider should target (renamed from ambiguous 'source')." }
+          "source_scope": { "type": ["string", "null"], "description": "Optional corpus/scope the provider should target (renamed from ambiguous 'source')." },
+          "semantic_diagnostics": {
+            "type": "object",
+            "description": "Open-set semantic score and gate diagnostics. Present only for embedding-classified steps.",
+            "required": ["candidate_family", "family_score", "runner_up", "family_margin", "abstain_score", "topk_agreement", "route_gate"],
+            "properties": {
+              "candidate_family": { "type": "string", "enum": ["historical", "structural", "repository", "runtime"] },
+              "family_score": { "type": "number" },
+              "runner_up": { "type": ["string", "null"] },
+              "family_margin": { "type": ["number", "null"] },
+              "abstain_score": { "type": ["number", "null"] },
+              "topk_agreement": { "type": ["number", "null"] },
+              "route_gate": { "const": "route" }
+            }
+          }
         }
       }
     },
@@ -81,7 +95,7 @@
           "text": { "type": "string", "minLength": 1 },
           "start": { "type": "integer", "minimum": 0 },
           "end": { "type": "integer", "minimum": 1 },
-          "reason": { "type": "string", "enum": ["no_high_precision_tell", "unresolved_evidence_target"] }
+          "reason": { "type": "string", "enum": ["no_high_precision_tell", "unresolved_evidence_target", "semantic_below_family_floor", "semantic_ambiguous_family_margin", "semantic_abstain_veto", "semantic_unavailable", "semantic_invalid_response"] }
         }
       }
     },

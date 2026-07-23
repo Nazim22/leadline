@@ -6,6 +6,52 @@ const YAML = require('yaml');
 const { decompose } = require('./decompose');
 const { isClauseFullyExcluded, loadPolicy, matchPrompt } = require('./matcher');
 
+const EVIDENCE_FAMILIES = new Set(['historical', 'structural', 'repository', 'runtime']);
+const SEMANTIC_REASON_MAP = Object.freeze({
+  below_family_floor: 'semantic_below_family_floor',
+  ambiguous_family_margin: 'semantic_ambiguous_family_margin',
+  abstain_veto: 'semantic_abstain_veto',
+});
+
+function inRange(value, minimum, maximum) {
+  return Number.isFinite(value) && value >= minimum && value <= maximum;
+}
+
+function hasOwn(object, field) {
+  return Object.prototype.hasOwnProperty.call(object, field);
+}
+
+function hasCompleteDiagnostics(verdict) {
+  return ['candidate_family', 'family_score', 'runner_up', 'family_margin', 'abstain_score', 'topk_agreement', 'route_gate']
+    .every((field) => hasOwn(verdict, field));
+}
+
+function isValidRoutedSemanticVerdict(verdict) {
+  if (!verdict || !hasCompleteDiagnostics(verdict)
+      || !EVIDENCE_FAMILIES.has(verdict.family)
+      || !inRange(verdict.score, -1, 1)
+      || verdict.route_gate !== 'route') return false;
+  if (verdict.candidate_family !== verdict.family || verdict.family_score !== verdict.score) return false;
+  if (!inRange(verdict.family_score, -1, 1)
+      || !EVIDENCE_FAMILIES.has(verdict.runner_up) || verdict.runner_up === verdict.family
+      || !inRange(verdict.family_margin, -2, 2)
+      || !inRange(verdict.abstain_score, -1, 1)
+      || !inRange(verdict.topk_agreement, 0, 1)) return false;
+  return true;
+}
+
+function isValidAbstainedSemanticVerdict(verdict) {
+  if (!verdict || !hasCompleteDiagnostics(verdict) || verdict.family !== null || verdict.route_gate !== 'abstain') return false;
+  if (!EVIDENCE_FAMILIES.has(verdict.candidate_family)
+      || !inRange(verdict.family_score, -1, 1)
+      || !EVIDENCE_FAMILIES.has(verdict.runner_up) || verdict.runner_up === verdict.candidate_family
+      || !inRange(verdict.family_margin, -2, 2)
+      || !inRange(verdict.abstain_score, -1, 1)
+      || !inRange(verdict.topk_agreement, 0, 1)
+      || !Object.hasOwn(SEMANTIC_REASON_MAP, verdict.abstain_reason)) return false;
+  return true;
+}
+
 function extractSubject(text) {
   const patterns = [
     /\b(port\s+\d+)\s+open\b/iu,
@@ -49,12 +95,13 @@ function createPlanner({ tellsPath, routesPath, semanticClassifier = null }) {
   const tells = loadPolicy(tellsPath);
   const routes = YAML.parse(fs.readFileSync(routesPath, 'utf8'));
   if (!routes || !routes.families) throw new Error(`invalid routes policy: ${routesPath}`);
-  const policyVersion = `${tells.policy_version}+${routes.policy_version}`;
+  const semanticFingerprint = semanticClassifier?.fingerprint || (semanticClassifier ? 'semantic-unversioned' : null);
+  const policyVersion = `${tells.policy_version}+${routes.policy_version}${semanticFingerprint ? `+${semanticFingerprint}` : ''}`;
 
   // Build one evidence obligation for a clause+family. Returns {step|null, anchor}.
   // A step is only produced when a relevance anchor exists — else the obligation is
   // unresolved (an anchor-less obligation would be trivially satisfiable = gate-gaming).
-  function buildStep(family, clauseText, matchText, classifiedBy, confidence, previousAnchor) {
+  function buildStep(family, clauseText, matchText, classifiedBy, confidence, previousAnchor, semanticDiagnostics = null) {
     const route = routes.families[family];
     if (!route || !route.provider) throw new Error(`no provider configured for family: ${family}`);
     let subject = extractSubject(matchText) || extractSubject(clauseText);
@@ -79,6 +126,7 @@ function createPlanner({ tellsPath, routesPath, semanticClassifier = null }) {
         confidence,
         classified_by: classifiedBy,
         source_scope: null,
+        ...(semanticDiagnostics ? { semantic_diagnostics: semanticDiagnostics } : {}),
       },
       anchor,
     };
@@ -88,7 +136,9 @@ function createPlanner({ tellsPath, routesPath, semanticClassifier = null }) {
     const numbered = steps.map((step, i) => ({ step_id: `route-${i + 1}`, ...step }));
     const abstained = numbered.length === 0;
     const abstainReason = abstained
-      ? (unmatchedClauses.some((c) => c.reason === 'unresolved_evidence_target') ? 'unresolved_evidence_target' : 'no_high_precision_tell')
+      ? (unmatchedClauses.some((clause) => clause.reason === 'unresolved_evidence_target')
+        ? 'unresolved_evidence_target'
+        : (unmatchedClauses[0]?.reason || 'no_high_precision_tell'))
       : null;
     return {
       schema_version: '1.0',
@@ -178,14 +228,43 @@ function createPlanner({ tellsPath, routesPath, semanticClassifier = null }) {
         }
       } else if (item.kind === 'fallback') {
         let verdict;
-        try { verdict = await semanticClassifier.classify(item.clause.text); }
-        catch { verdict = { family: null, reason: 'embed-error' }; }
-        if (verdict.family) {
-          const r = buildStep(verdict.family, item.clause.text, item.clause.text, `embedding:${verdict.score}`, verdict.score, anchor);
+        try {
+          verdict = await semanticClassifier.classify(item.clause.text);
+        } catch {
+          unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'semantic_unavailable' });
+          continue;
+        }
+        const routedVerdict = isValidRoutedSemanticVerdict(verdict);
+        const abstainedVerdict = isValidAbstainedSemanticVerdict(verdict);
+        if (!routedVerdict && !abstainedVerdict) {
+          unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'semantic_invalid_response' });
+          continue;
+        }
+        if (routedVerdict) {
+          const diagnostics = {
+            candidate_family: verdict.candidate_family,
+            family_score: verdict.family_score,
+            runner_up: verdict.runner_up,
+            family_margin: verdict.family_margin,
+            abstain_score: verdict.abstain_score,
+            topk_agreement: verdict.topk_agreement,
+            route_gate: verdict.route_gate,
+          };
+          const confidence = Math.max(0, Math.min(1, Number(verdict.score)));
+          const r = buildStep(
+            verdict.family,
+            item.clause.text,
+            item.clause.text,
+            `embedding:${semanticFingerprint}:${verdict.score}`,
+            confidence,
+            anchor,
+            diagnostics,
+          );
           if (r.step) { steps.push(r.step); anchor = r.anchor; }
           else unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'unresolved_evidence_target' });
         } else {
-          unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'no_high_precision_tell' });
+          const reason = SEMANTIC_REASON_MAP[verdict.abstain_reason] || 'no_high_precision_tell';
+          unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason });
         }
       }
     }

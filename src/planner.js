@@ -45,101 +45,154 @@ function extractRelevanceTokens(text, subject) {
   return [...new Set(useful)];
 }
 
-function createPlanner({ tellsPath, routesPath }) {
+function createPlanner({ tellsPath, routesPath, semanticClassifier = null }) {
   const tells = loadPolicy(tellsPath);
   const routes = YAML.parse(fs.readFileSync(routesPath, 'utf8'));
   if (!routes || !routes.families) throw new Error(`invalid routes policy: ${routesPath}`);
   const policyVersion = `${tells.policy_version}+${routes.policy_version}`;
 
-  function plan(question, options = {}) {
-    if (typeof question !== 'string') throw new TypeError('question must be a string');
-    const turnId = options.turnId || `turn-${hash(question)}`;
-    const clauses = decompose(question);
-    const matches = matchPrompt(question, tells);
-    const byClauseAndFamily = new Map();
-
-    for (const match of matches) {
-      const key = `${match.clause.index}\0${match.family}`;
-      if (!byClauseAndFamily.has(key)) {
-        byClauseAndFamily.set(key, { family: match.family, first: match, matches: [] });
-      }
-      byClauseAndFamily.get(key).matches.push(match);
+  // Build one evidence obligation for a clause+family. Returns {step|null, anchor}.
+  // A step is only produced when a relevance anchor exists — else the obligation is
+  // unresolved (an anchor-less obligation would be trivially satisfiable = gate-gaming).
+  function buildStep(family, clauseText, matchText, classifiedBy, confidence, previousAnchor) {
+    const route = routes.families[family];
+    if (!route || !route.provider) throw new Error(`no provider configured for family: ${family}`);
+    let subject = extractSubject(matchText) || extractSubject(clauseText);
+    let relevanceTokens = extractRelevanceTokens(clauseText, subject);
+    const isPronounFollowUp = /\b(?:it|this|that|they|them|its|their)\b/iu.test(clauseText);
+    if (relevanceTokens.length === 0 && isPronounFollowUp && previousAnchor) {
+      relevanceTokens = previousAnchor.tokens;
+      subject = previousAnchor.subject;
     }
-
-    const obligations = [...byClauseAndFamily.values()].sort((a, b) => a.first.span.start - b.first.span.start);
-    const steps = [];
-    const unresolvedClauseIndices = new Set();
-    let previousAnchor = null;
-
-    for (const obligation of obligations) {
-      const route = routes.families[obligation.family];
-      if (!route || !route.provider) throw new Error(`no provider configured for family: ${obligation.family}`);
-      const clause = obligation.first.clause.text;
-      let subject = extractSubject(obligation.first.text) || extractSubject(clause);
-      let relevanceTokens = extractRelevanceTokens(clause, subject);
-      const isPronounFollowUp = /\b(?:it|this|that|they|them|its|their)\b/iu.test(clause);
-      if (relevanceTokens.length === 0 && isPronounFollowUp && previousAnchor) {
-        relevanceTokens = previousAnchor.tokens;
-        subject = previousAnchor.subject;
-      }
-      if (relevanceTokens.length === 0) {
-        unresolvedClauseIndices.add(obligation.first.clause.index);
-        continue;
-      }
-
-      previousAnchor = { subject: subject || relevanceTokens.join(' '), tokens: relevanceTokens };
-      const tellIds = [...new Set(obligation.matches.map((match) => match.id))];
-      steps.push({
-        step_id: `route-${steps.length + 1}`,
-        need: obligation.family,
+    if (relevanceTokens.length === 0) return { step: null, anchor: previousAnchor };
+    const anchor = { subject: subject || relevanceTokens.join(' '), tokens: relevanceTokens };
+    return {
+      step: {
+        need: family,
         provider: route.provider,
-        evidence_target: {
-          subject: subject || relevanceTokens.join(' '),
-          question: clause.trim(),
-        },
+        evidence_target: { subject: subject || relevanceTokens.join(' '), question: clauseText.trim() },
         satisfaction: {
           requires_nonempty: true,
           requires_relevance_to: relevanceTokens,
-          freshness: ['repository', 'runtime'].includes(obligation.family) ? 'fresh' : 'any',
+          freshness: ['repository', 'runtime'].includes(family) ? 'fresh' : 'any',
         },
-        confidence: 1,
-        classified_by: `tell:${tellIds.join(',')}`,
+        confidence,
+        classified_by: classifiedBy,
         source_scope: null,
-      });
-    }
+      },
+      anchor,
+    };
+  }
 
-    const matchedClauseIndices = new Set(matches.map((match) => match.clause.index));
-    const unmatchedClauses = clauses.flatMap((clause, index) => {
-      if (unresolvedClauseIndices.has(index)) {
-        return [{ index, text: clause.text, start: clause.start, end: clause.end, reason: 'unresolved_evidence_target' }];
-      }
-      if (matchedClauseIndices.has(index) || isClauseFullyExcluded(clause, tells)) return [];
-      return [{ index, text: clause.text, start: clause.start, end: clause.end, reason: 'no_high_precision_tell' }];
-    });
-    const abstained = steps.length === 0;
+  function assemble(question, turnId, steps, unmatchedClauses) {
+    const numbered = steps.map((step, i) => ({ step_id: `route-${i + 1}`, ...step }));
+    const abstained = numbered.length === 0;
     const abstainReason = abstained
-      ? (unmatchedClauses.some((clause) => clause.reason === 'unresolved_evidence_target')
-        ? 'unresolved_evidence_target'
-        : 'no_high_precision_tell')
+      ? (unmatchedClauses.some((c) => c.reason === 'unresolved_evidence_target') ? 'unresolved_evidence_target' : 'no_high_precision_tell')
       : null;
-
     return {
       schema_version: '1.0',
       contract_id: `contract-${hash(`${turnId}\0${question}\0${policyVersion}`)}`,
       turn_id: turnId,
       question,
       policy_version: policyVersion,
-      steps,
-      ordered_route: steps.map((step) => step.step_id),
+      steps: numbered,
+      ordered_route: numbered.map((s) => s.step_id),
       complete: unmatchedClauses.length === 0,
       unmatched_clauses: unmatchedClauses,
-      first_action: steps[0]?.provider || null,
+      first_action: numbered[0]?.provider || null,
       abstained,
       abstain_reason: abstainReason,
     };
   }
 
-  return { plan, policyVersion };
+  // group tells matches by clause index → family
+  function tellsByClause(matches) {
+    const byClause = new Map();
+    for (const m of matches) {
+      if (!byClause.has(m.clause.index)) byClause.set(m.clause.index, new Map());
+      const fam = byClause.get(m.clause.index);
+      if (!fam.has(m.family)) fam.set(m.family, { family: m.family, first: m, matches: [] });
+      fam.get(m.family).matches.push(m);
+    }
+    return byClause;
+  }
+
+  // Ordered clause walk shared by both paths. `classify` is null for tells-only.
+  function walk(clauses, byClause, onSemantic) {
+    // onSemantic(clause) → {family, score}|null, may be sync (tells) — semantic path
+    // wraps this generator differently; kept as a builder returning intent per clause.
+    const plan = [];
+    for (let idx = 0; idx < clauses.length; idx++) {
+      const clause = clauses[idx];
+      const fam = byClause.get(idx);
+      if (fam && fam.size) {
+        const groups = [...fam.values()].sort((a, b) => a.first.span.start - b.first.span.start);
+        plan.push({ idx, clause, kind: 'tells', groups });
+      } else if (isClauseFullyExcluded(clause, tells)) {
+        plan.push({ idx, clause, kind: 'excluded' });
+      } else {
+        plan.push({ idx, clause, kind: 'fallback' });
+      }
+    }
+    return plan;
+  }
+
+  function plan(question, options = {}) {
+    if (typeof question !== 'string') throw new TypeError('question must be a string');
+    const turnId = options.turnId || `turn-${hash(question)}`;
+    const clauses = decompose(question);
+    const items = walk(clauses, tellsByClause(matchPrompt(question, tells)));
+    const steps = [];
+    const unmatched = [];
+    let anchor = null;
+    for (const item of items) {
+      if (item.kind === 'tells') {
+        for (const g of item.groups) {
+          const r = buildStep(g.family, item.clause.text, g.first.text, `tell:${[...new Set(g.matches.map((m) => m.id))].join(',')}`, 1, anchor);
+          if (r.step) { steps.push(r.step); anchor = r.anchor; }
+          else unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'unresolved_evidence_target' });
+        }
+      } else if (item.kind === 'fallback') {
+        unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'no_high_precision_tell' });
+      }
+    }
+    return assemble(question, turnId, steps, unmatched);
+  }
+
+  async function planSemantic(question, options = {}) {
+    if (typeof question !== 'string') throw new TypeError('question must be a string');
+    if (!semanticClassifier) return plan(question, options);
+    const turnId = options.turnId || `turn-${hash(question)}`;
+    const clauses = decompose(question);
+    const items = walk(clauses, tellsByClause(matchPrompt(question, tells)));
+    const steps = [];
+    const unmatched = [];
+    let anchor = null;
+    for (const item of items) {
+      if (item.kind === 'tells') {
+        for (const g of item.groups) {
+          const r = buildStep(g.family, item.clause.text, g.first.text, `tell:${[...new Set(g.matches.map((m) => m.id))].join(',')}`, 1, anchor);
+          if (r.step) { steps.push(r.step); anchor = r.anchor; }
+          else unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'unresolved_evidence_target' });
+        }
+      } else if (item.kind === 'fallback') {
+        let verdict;
+        try { verdict = await semanticClassifier.classify(item.clause.text); }
+        catch { verdict = { family: null, reason: 'embed-error' }; }
+        if (verdict.family) {
+          const r = buildStep(verdict.family, item.clause.text, item.clause.text, `embedding:${verdict.score}`, verdict.score, anchor);
+          if (r.step) { steps.push(r.step); anchor = r.anchor; }
+          else unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'unresolved_evidence_target' });
+        } else {
+          unmatched.push({ index: item.idx, text: item.clause.text, start: item.clause.start, end: item.clause.end, reason: 'no_high_precision_tell' });
+        }
+      }
+    }
+    return assemble(question, turnId, steps, unmatched);
+  }
+
+  return { plan, planSemantic, policyVersion, semanticEnabled: Boolean(semanticClassifier) };
 }
 
-module.exports = { createPlanner, extractSubject };
+module.exports = { createPlanner, extractSubject, extractRelevanceTokens };

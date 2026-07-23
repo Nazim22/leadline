@@ -1,0 +1,75 @@
+# Leadline Stage-2 semantic exemplars.
+# Diverse natural phrasings per evidence family, PLUS an explicit `abstain` class.
+# Written from the rubric's general semantics — NOT derived from the frozen real
+# eval corpus (benchmark integrity). Tune only against the dev set.
+policy_version: exemplars-v0
+
+classes:
+  historical:
+    - "did we decide to use that approach"
+    - "what did we settle on for the retry logic"
+    - "why did we choose this design"
+    - "what did we ship last session"
+    - "have we already built that feature"
+    - "where did we leave off on the migration"
+    - "what happened during the outage"
+    - "did we already fix that bug"
+    - "what did we change in the last release"
+    - "what was our reasoning for that"
+    - "remind me what we concluded about pricing"
+    - "did we deploy that change before"
+
+  structural:
+    - "who calls this function"
+    - "what depends on this module"
+    - "where is this symbol defined"
+    - "what imports the config loader"
+    - "show me the callers of chargeCard"
+    - "what is the blast radius of changing this"
+    - "which files reference this class"
+    - "what are the callees of this method"
+    - "trace the dependency chain for this"
+
+  repository:
+    - "show me the exact code for this function"
+    - "what does this file currently contain"
+    - "review this function for a bug"
+    - "what is the value in the config file"
+    - "show me the diff for this change"
+    - "what does line 40 say"
+    - "read the implementation of this handler"
+    - "inspect the current source for the issue"
+    - "what does the code actually do right now"
+    - "check the exact contents of this file"
+
+  runtime:
+    - "is the service deployed and live"
+    - "is the server responding right now"
+    - "what version is currently running"
+    - "did the tests just pass"
+    - "what is the current database row count"
+    - "is the endpoint healthy"
+    - "check if the process is running"
+    - "what is listening on that port"
+    - "is production up"
+    - "what does the live log show now"
+
+  abstain:
+    - "build the feature"
+    - "fix this"
+    - "add a new endpoint"
+    - "clean up this function"
+    - "deploy it"
+    - "go ahead and proceed"
+    - "thanks that works"
+    - "what do you think we should do"
+    - "should we take this approach"
+    - "explain how this technology works"
+    - "go on"
+    - "yes do it"
+    - "update the script to handle that"
+    - "let's refactor this later"
+    - "any update"
+    - "continue with the next task"
+    - "please write the migration"
+    - "make it faster"

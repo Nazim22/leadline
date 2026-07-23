@@ -5,10 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalize } = require('./receipts');
 const { validateEvidenceReceipt } = require('./evidence');
-
-function normalize(value) {
-  return String(value).trim().toLocaleLowerCase();
-}
+const { requiredCapabilities } = require('./authority');
+const { matchEntity } = require('./entity-match');
 
 // Evidence-contact receipts carry observed_at at the top level (not under freshness).
 // Order (per Item 2): (1) parse observed_at; invalid → not fresh. (2) a FUTURE observed_at
@@ -26,15 +24,23 @@ function receiptFreshAtFinalization(receipt, rule, now) {
   return (now.valueOf() - observed) / 1000 <= rule.freshness.max_age_seconds;
 }
 
-// First failing gate for a considered receipt, in strict order (per Item 3).
-function receiptDisposition(receipt, rule, entity, sessionId, turnId, now) {
-  if (receipt.session_id !== sessionId || receipt.turn_id !== turnId) return 'wrong_scope';
-  if (Date.parse(receipt.timestamp) > now.valueOf()) return 'future_timestamp';
-  if (!rule.authoritative_sources.includes(receipt.provider)) return 'wrong_authority';
-  if (receipt.failure !== 'none') return 'empty_error';
-  if (!receipt.references.includes(entity)) return 'entity_mismatch';
-  if (!receiptFreshAtFinalization(receipt, rule, now)) return 'stale';
-  return 'supporting';
+// First failing gate for a considered receipt, in strict order (Stage 1.2). Authority is now
+// capability-based (derived, never provider-asserted); entity matching is the conservative
+// multi-token matcher. Returns the decision plus the matchEntity explanation for the audit trail.
+function receiptDisposition(receipt, rule, requiredCaps, entity, sessionId, turnId, now) {
+  const match = matchEntity(entity, receipt.references, { truncated: receipt.references_truncated });
+  let decision;
+  if (receipt.session_id !== sessionId || receipt.turn_id !== turnId) decision = 'wrong_scope';
+  else if (Date.parse(receipt.timestamp) > now.valueOf()) decision = 'future_timestamp';
+  // capability null (unknown) is never in requiredCaps => wrong_capability. Enforces the core invariant.
+  else if (!requiredCaps.includes(receipt.capability)) decision = 'wrong_capability';
+  else if (receipt.failure !== 'none') decision = 'empty_error';
+  else if (!match.matched && !receipt.references_truncated) decision = 'entity_mismatch';
+  // A non-match against a capped reference set is ambiguity, not a clean miss.
+  else if (!match.matched && receipt.references_truncated) decision = 'truncated';
+  else if (!receiptFreshAtFinalization(receipt, rule, now)) decision = 'stale';
+  else decision = 'supporting';
+  return { decision, match_explanation: match };
 }
 
 function evaluateFinalization({ completionId, sessionId, turnId, detectorResult, evidenceReceipts, policy, overrides = {}, now = new Date() } = {}) {
@@ -55,18 +61,20 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
     for (const obligation of detectorResult.obligations) {
       const rule = policy.families[obligation.family];
       if (!rule) throw new TypeError(`unknown obligation family: ${obligation.family}`);
-      const entity = normalize(obligation.entity);
-      // Considered = references the entity OR (in exact turn scope AND from an authoritative provider).
-      // This bounds noise while still surfacing wrong_authority / wrong_scope / entity_mismatch classes.
+      const requiredCaps = requiredCapabilities(policy, obligation.pattern_id);
+      // Considered = the matcher matches the entity OR (in exact turn scope AND capability is authoritative).
+      // This bounds noise while still surfacing wrong_capability / wrong_scope / entity_mismatch classes.
       const considered = evidenceReceipts.filter((receipt) => (
-        receipt.references.includes(entity)
+        matchEntity(obligation.entity, receipt.references, { truncated: receipt.references_truncated }).matched
         || (receipt.session_id === sessionId && receipt.turn_id === turnId
-            && rule.authoritative_sources.includes(receipt.provider))
+            && requiredCaps.includes(receipt.capability))
       ));
-      const dispositions = considered.map((receipt) => ({
-        evidence_id: receipt.evidence_id,
-        decision: receiptDisposition(receipt, rule, entity, sessionId, turnId, now),
-      }));
+      const dispositions = considered.map((receipt) => {
+        const { decision, match_explanation: matchExplanation } = receiptDisposition(
+          receipt, rule, requiredCaps, obligation.entity, sessionId, turnId, now,
+        );
+        return { evidence_id: receipt.evidence_id, decision, match_explanation: matchExplanation };
+      });
       const supportingIds = dispositions.filter((item) => item.decision === 'supporting').map((item) => item.evidence_id);
       const override = Object.prototype.hasOwnProperty.call(overrides, obligation.claim_id)
         ? overrides[obligation.claim_id] : null;
@@ -80,10 +88,10 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
         overrideProvenance = override;
       } else if (supportingIds.length > 0) {
         status = 'supported';
-        matchMethod = 'entity_in_references';
-      } else if (dispositions.some((item) => item.decision === 'stale')) {
+        matchMethod = 'capability_match';
+      } else if (dispositions.some((item) => item.decision === 'stale' || item.decision === 'truncated')) {
         status = 'ambiguous';
-        matchMethod = 'entity_in_references';
+        matchMethod = 'capability_match';
       } else {
         status = 'unsupported';
         matchMethod = 'none';
@@ -92,6 +100,7 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
         claim_id: obligation.claim_id,
         claim: obligation.claim,
         family: obligation.family,
+        pattern_id: obligation.pattern_id,
         entity: obligation.entity,
         candidate_evidence_ids: considered.map((receipt) => receipt.evidence_id),
         supporting_evidence_ids: supportingIds,
@@ -111,6 +120,10 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
   const core = {
     schema_version: '1.0',
     completion_id: completionId,
+    // Dae mandatory patch: the scope enforced at runtime must also be recorded and hashed into
+    // enforcement_id, so the artifact discloses the exact session/turn it was evaluated under.
+    session_id: sessionId,
+    turn_id: turnId,
     mode: 'shadow',
     action: 'log_only',
     detector_status: detectorResult.status,

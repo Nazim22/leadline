@@ -87,6 +87,7 @@ test('claim detector confirms factual claims and extracts family and entity', as
   assert.deepEqual({ ...obligation, claim_id: '<stable>' }, {
     claim_id: '<stable>',
     candidate_id: 'runtime-live:0',
+    pattern_id: 'runtime-live',
     claim: 'is live and responding.',
     family: 'runtime',
     entity: 'cstoregenie-app lambda',

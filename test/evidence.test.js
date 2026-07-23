@@ -11,7 +11,7 @@ const {
 const EVIDENCE_KEYS = [
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
   'capability', 'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
-  'references', 'references_redacted', 'failure',
+  'references', 'references_redacted', 'references_truncated', 'failure',
 ].sort();
 
 const base = {
@@ -76,10 +76,24 @@ test('redactSecrets masks known secret shapes and connection-string credentials'
   assert.match(redactSecrets('mysql://root:hunter2@db/app'), /mysql:\/\/\*\*\*:\*\*\*@/);
 });
 
-test('capability is a pass-through label when provided', () => {
-  const receipt = createEvidenceContactReceipt({ ...base, capability: 'runtime.test_run' });
-  assert.equal(receipt.capability, 'runtime.test_run');
-  assert.doesNotThrow(() => validateEvidenceReceipt(receipt));
+test('capability is DERIVED from the tool call, never caller-asserted (Dae invariant)', () => {
+  const testRun = createEvidenceContactReceipt({
+    ...base, toolCall: { provider: 'bash', name: 'bash', args: { command: 'npm test' } },
+  });
+  assert.equal(testRun.capability, 'runtime.test_run');
+  const probe = createEvidenceContactReceipt({
+    ...base, toolCall: { provider: 'bash', name: 'bash', args: { command: 'curl https://svc/health' } },
+  });
+  assert.equal(probe.capability, 'runtime.health_probe');
+  // arbitrary bash is not authoritative → null (can never support a claim at the link step)
+  const arbitrary = createEvidenceContactReceipt({
+    ...base, toolCall: { provider: 'bash', name: 'bash', args: { command: 'echo hi' } },
+  });
+  assert.equal(arbitrary.capability, null);
+  // a caller-supplied `capability` is ignored: base's cli-probe provider derives null regardless
+  const ignored = createEvidenceContactReceipt({ ...base, capability: 'runtime.health_probe' });
+  assert.equal(ignored.capability, null);
+  assert.doesNotThrow(() => validateEvidenceReceipt(testRun));
 });
 
 test('contact-time failure is operational only: empty and error, never claim-relative', () => {
@@ -124,7 +138,6 @@ test('createEvidenceContactReceipt rejects malformed inputs', () => {
   assert.throws(() => createEvidenceContactReceipt({ ...base, session_id: '' }), /session_id must be a non-empty string/);
   assert.throws(() => createEvidenceContactReceipt({ ...base, toolCall: { provider: 'cli-probe', name: 'curl', args: [] } }), /toolCall is invalid/);
   assert.throws(() => createEvidenceContactReceipt({ ...base, result: [] }), /result is invalid/);
-  assert.throws(() => createEvidenceContactReceipt({ ...base, capability: '' }), /capability must be null or a non-empty string/);
 });
 
 test('extractReferences handles strings, non-strings, dedupe, and empty', () => {

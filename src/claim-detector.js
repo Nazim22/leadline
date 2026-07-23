@@ -109,6 +109,7 @@ async function createClaimObligationDetector({
     const rawCandidates = detectClaims(text);
     const allCandidates = rawCandidates.map((candidate, index) => ({
       candidate_id: `${candidate.id}:${index}`,
+      pattern_id: candidate.id,
       pattern_family: candidate.family,
       pattern_evidence: candidate.evidence,
       matched_text: candidate.claim,
@@ -171,6 +172,7 @@ async function createClaimObligationDetector({
       obligations.push({
         claim_id: stableClaimId(text, decision),
         candidate_id: decision.candidate_id,
+        pattern_id: candidate.pattern_id,
         claim: candidate.matched_text,
         family: decision.family,
         entity: decision.entity.trim(),

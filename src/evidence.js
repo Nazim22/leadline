@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalize, hashValue, nonempty, parseDate } = require('./receipts');
+const { deriveCapability } = require('./capability');
 
 // Contact-time failures are operational only. wrong_source/irrelevant/stale are CLAIM-relative
 // and belong to the finalization link step, never to an evidence-contact receipt.
@@ -10,7 +11,7 @@ const FAILURES = new Set(['none', 'empty', 'error']);
 const EVIDENCE_KEYS = Object.freeze([
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
   'capability', 'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
-  'references', 'references_redacted', 'failure',
+  'references', 'references_redacted', 'references_truncated', 'failure',
 ]);
 
 // Known secret shapes masked out of tool OUTPUT before it becomes a stored reference.
@@ -51,10 +52,10 @@ function extractReferences(value) {
     try {
       text = JSON.stringify(value);
     } catch {
-      return { references: [], references_redacted: 0 };
+      return { references: [], references_redacted: 0, references_truncated: false };
     }
   }
-  if (typeof text !== 'string') return { references: [], references_redacted: 0 };
+  if (typeof text !== 'string') return { references: [], references_redacted: 0, references_truncated: false };
   const { text: redacted, redactedCount } = scrubSecrets(text);
   const identifiers = redacted.match(/[A-Za-z_][\w.-]{2,}/gu) || [];
   const counts = redacted.match(/\b\d+\/\d+\b/gu) || [];
@@ -66,7 +67,13 @@ function extractReferences(value) {
     if (term.length >= 32 && /[a-z]/u.test(term) && /[0-9]/u.test(term)) { entropyDropped += 1; continue; }
     kept.push(term);
   }
-  return { references: kept.sort().slice(0, 200), references_redacted: redactedCount + entropyDropped };
+  // references_truncated: more than 200 unique surviving terms means the reference set was capped,
+  // so a non-match at the link step is ambiguity (a term may have been dropped), not a clean miss.
+  return {
+    references: kept.sort().slice(0, 200),
+    references_redacted: redactedCount + entropyDropped,
+    references_truncated: kept.length > 200,
+  };
 }
 
 function validateEvidenceReceipt(receipt) {
@@ -97,13 +104,16 @@ function validateEvidenceReceipt(receipt) {
   if (!Number.isInteger(receipt.references_redacted) || receipt.references_redacted < 0) {
     throw new TypeError('invalid evidence receipt: references_redacted must be a non-negative integer');
   }
+  if (typeof receipt.references_truncated !== 'boolean') {
+    throw new TypeError('invalid evidence receipt: references_truncated must be a boolean');
+  }
   const { evidence_id: evidenceId, ...core } = receipt;
   const expectedId = `evidence-${hashValue(core).slice(0, 24)}`;
   if (evidenceId !== expectedId) throw new TypeError('invalid evidence receipt: identity mismatch');
   return receipt;
 }
 
-function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolCall, result, capability = null, now = new Date() } = {}) {
+function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolCall, result, now = new Date() } = {}) {
   for (const [field, value] of Object.entries({ session_id, turn_id, tool_call_id })) {
     if (typeof value !== 'string' || value.length === 0) throw new TypeError(`${field} must be a non-empty string`);
   }
@@ -113,10 +123,10 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
     throw new TypeError('toolCall is invalid');
   }
   if (!result || typeof result !== 'object' || Array.isArray(result)) throw new TypeError('result is invalid');
-  if (capability !== null && (typeof capability !== 'string' || capability.length === 0)) {
-    throw new TypeError('capability must be null or a non-empty string');
-  }
   if (!(now instanceof Date) || !Number.isFinite(now.valueOf())) throw new TypeError('now must be a valid Date');
+  // Capability is DERIVED from the tool call, never caller-asserted (Dae's core invariant).
+  // Unknown => null, and a null capability can never satisfy a claim at the link step.
+  const capability = deriveCapability({ provider: toolCall.provider, name: toolCall.name, args: toolCall.args });
 
   const observed = result.observed_at == null ? null : parseDate(result.observed_at, 'result.observed_at');
   const resultNonempty = result.error == null && nonempty(result.value);
@@ -124,7 +134,7 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
   if (result.error != null) failure = 'error';
   else if (!resultNonempty) failure = 'empty';
 
-  const { references, references_redacted: referencesRedacted } = extractReferences(result.value);
+  const { references, references_redacted: referencesRedacted, references_truncated: referencesTruncated } = extractReferences(result.value);
   const core = {
     schema_version: '1.0',
     session_id,
@@ -132,7 +142,7 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
     tool_call_id,
     provider: toolCall.provider,
     tool_name: toolCall.name,
-    // ponytail: capability is a pass-through label in stage 1; deterministic capability inference + capability-based authority matching land with the replay harness (stage 2).
+    // Derived (not caller-asserted) capability authority; capability-based satisfaction is decided at the link step.
     capability,
     args_sha256: hashValue(toolCall.args),
     arg_keys: [...Object.keys(toolCall.args)].sort(),
@@ -142,6 +152,7 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
     result_nonempty: resultNonempty,
     references,
     references_redacted: referencesRedacted,
+    references_truncated: referencesTruncated,
     failure,
   };
   const receipt = Object.freeze({ ...core, evidence_id: `evidence-${hashValue(core).slice(0, 24)}` });

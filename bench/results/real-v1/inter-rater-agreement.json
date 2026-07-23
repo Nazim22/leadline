@@ -1,0 +1,35 @@
+{
+  "schema": "inter-rater-real-v1",
+  "n": 250,
+  "lanes": [
+    "dae",
+    "pingu-lane2"
+  ],
+  "exact_ordered_route_agreement": {
+    "match": 202,
+    "n": 250,
+    "rate": 0.808
+  },
+  "first_family_agreement": {
+    "match": 207,
+    "n": 250,
+    "rate": 0.828
+  },
+  "cohen_kappa_first_family": 0.6466,
+  "abstain": {
+    "dae": 165,
+    "lane2": 182
+  },
+  "disagreement_confusion": {
+    "historical->runtime": 16,
+    "historical->abstain": 16,
+    "repository->abstain": 4,
+    "abstain->runtime": 2,
+    "runtime->historical": 1,
+    "repository->historical": 1,
+    "structural->historical": 1,
+    "abstain->historical": 1,
+    "historical->repository": 1
+  },
+  "note": "Substantial agreement (kappa 0.65). Disagreement concentrates on historical-vs-runtime/abstain edges (past-state + implicit-ask ambiguity). The router baseline (1/85 routed) is robust to this: even the more-abstain-happy lane leaves ~68 routing cases the router did not route."
+}

@@ -10,10 +10,39 @@ const FAILURES = new Set(['none', 'empty', 'error']);
 const EVIDENCE_KEYS = Object.freeze([
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
   'capability', 'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
-  'references', 'failure',
+  'references', 'references_redacted', 'failure',
 ]);
 
-// Deterministic relevance basis: identifiers/paths/dotted names + versioned counts (e.g. "37/37").
+// Known secret shapes masked out of tool OUTPUT before it becomes a stored reference.
+const SECRET_PATTERNS = Object.freeze([
+  /sk-[A-Za-z0-9]{20,}/gu,
+  /gh[pousr]_[A-Za-z0-9]{20,}/gu,
+  /AKIA[0-9A-Z]{16}/gu,
+  /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/gu,
+  /Bearer\s+[A-Za-z0-9._-]{16,}/gu,
+  /xox[baprs]-[A-Za-z0-9-]{10,}/gu,
+]);
+// Connection strings: mask the scheme://user:pass@ credentials, keep the rest.
+const CONNECTION_CREDENTIALS = /(\w+):\/\/[^\s:@/]+:[^\s@/]+@/gu;
+
+// Sequential scrub so overlapping shapes (e.g. Bearer wrapping a JWT) are consumed once, with a count.
+function scrubSecrets(text) {
+  let redacted = text;
+  let redactedCount = 0;
+  for (const pattern of SECRET_PATTERNS) {
+    redacted = redacted.replace(pattern, () => { redactedCount += 1; return ' '; });
+  }
+  redacted = redacted.replace(CONNECTION_CREDENTIALS, (_match, scheme) => { redactedCount += 1; return `${scheme}://***:***@`; });
+  return { text: redacted, redactedCount };
+}
+
+// Named redactor: removes/masks known secret shapes from text before extraction.
+function redactSecrets(text) {
+  return scrubSecrets(String(text)).text;
+}
+
+// Deterministic relevance basis: identifiers/paths/dotted names + versioned counts (e.g. "37/37"),
+// with secret-shaped tokens redacted first so tool OUTPUT can never persist a credential as a reference.
 function extractReferences(value) {
   let text;
   if (typeof value === 'string') {
@@ -22,14 +51,22 @@ function extractReferences(value) {
     try {
       text = JSON.stringify(value);
     } catch {
-      return [];
+      return { references: [], references_redacted: 0 };
     }
   }
-  if (typeof text !== 'string') return [];
-  const identifiers = text.match(/[A-Za-z_][\w.-]{2,}/gu) || [];
-  const counts = text.match(/\b\d+\/\d+\b/gu) || [];
+  if (typeof text !== 'string') return { references: [], references_redacted: 0 };
+  const { text: redacted, redactedCount } = scrubSecrets(text);
+  const identifiers = redacted.match(/[A-Za-z_][\w.-]{2,}/gu) || [];
+  const counts = redacted.match(/\b\d+\/\d+\b/gu) || [];
   const set = new Set([...identifiers, ...counts].map((term) => term.toLocaleLowerCase()));
-  return [...set].sort().slice(0, 200);
+  let entropyDropped = 0;
+  const kept = [];
+  for (const term of set) {
+    // ponytail: length+mixed-charclass entropy heuristic; a real classifier can replace it if it under/over-filters
+    if (term.length >= 32 && /[a-z]/u.test(term) && /[0-9]/u.test(term)) { entropyDropped += 1; continue; }
+    kept.push(term);
+  }
+  return { references: kept.sort().slice(0, 200), references_redacted: redactedCount + entropyDropped };
 }
 
 function validateEvidenceReceipt(receipt) {
@@ -56,6 +93,9 @@ function validateEvidenceReceipt(receipt) {
   if (receipt.observed_at !== null) parseDate(receipt.observed_at, 'observed_at');
   if (typeof receipt.result_nonempty !== 'boolean' || !FAILURES.has(receipt.failure)) {
     throw new TypeError('invalid evidence receipt: result_nonempty or failure');
+  }
+  if (!Number.isInteger(receipt.references_redacted) || receipt.references_redacted < 0) {
+    throw new TypeError('invalid evidence receipt: references_redacted must be a non-negative integer');
   }
   const { evidence_id: evidenceId, ...core } = receipt;
   const expectedId = `evidence-${hashValue(core).slice(0, 24)}`;
@@ -84,6 +124,7 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
   if (result.error != null) failure = 'error';
   else if (!resultNonempty) failure = 'empty';
 
+  const { references, references_redacted: referencesRedacted } = extractReferences(result.value);
   const core = {
     schema_version: '1.0',
     session_id,
@@ -99,7 +140,8 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
     observed_at: observed ? observed.toISOString() : null,
     result_hash: hashValue(result.error == null ? result.value : { error: String(result.error) }),
     result_nonempty: resultNonempty,
-    references: extractReferences(result.value),
+    references,
+    references_redacted: referencesRedacted,
     failure,
   };
   const receipt = Object.freeze({ ...core, evidence_id: `evidence-${hashValue(core).slice(0, 24)}` });
@@ -113,4 +155,4 @@ function appendEvidenceReceipt(file, receipt) {
 }
 
 // canonicalize is re-exported from receipts so the evidence hash basis stays single-sourced with claim-support receipts.
-module.exports = { appendEvidenceReceipt, canonicalize, createEvidenceContactReceipt, extractReferences, validateEvidenceReceipt };
+module.exports = { appendEvidenceReceipt, canonicalize, createEvidenceContactReceipt, extractReferences, redactSecrets, validateEvidenceReceipt };

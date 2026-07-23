@@ -11,18 +11,36 @@ function normalize(value) {
 }
 
 // Evidence-contact receipts carry observed_at at the top level (not under freshness).
-// A future observed_at (raw age < 0) is NOT fresh.
+// Order (per Item 2): (1) parse observed_at; invalid → not fresh. (2) a FUTURE observed_at
+// (raw age < 0) is never fresh — this binds BEFORE the policy, so 'any' cannot rubber-stamp a
+// future observation. (3) then apply policy: 'any' → fresh; 'fresh' → age <= max_age_seconds.
 function receiptFreshAtFinalization(receipt, rule, now) {
+  let observed = null;
+  if (receipt.observed_at != null) {
+    observed = Date.parse(receipt.observed_at);
+    if (!Number.isFinite(observed)) return false;
+    if (observed > now.valueOf()) return false;
+  }
   if (rule.freshness.requirement === 'any') return true;
-  if (receipt.observed_at == null) return false;
-  const observed = Date.parse(receipt.observed_at);
-  if (!Number.isFinite(observed)) return false;
-  const age = (now.valueOf() - observed) / 1000;
-  return age >= 0 && age <= rule.freshness.max_age_seconds;
+  if (observed == null) return false;
+  return (now.valueOf() - observed) / 1000 <= rule.freshness.max_age_seconds;
 }
 
-function evaluateFinalization({ completionId, detectorResult, evidenceReceipts, policy, overrides = {}, now = new Date() } = {}) {
+// First failing gate for a considered receipt, in strict order (per Item 3).
+function receiptDisposition(receipt, rule, entity, sessionId, turnId, now) {
+  if (receipt.session_id !== sessionId || receipt.turn_id !== turnId) return 'wrong_scope';
+  if (Date.parse(receipt.timestamp) > now.valueOf()) return 'future_timestamp';
+  if (!rule.authoritative_sources.includes(receipt.provider)) return 'wrong_authority';
+  if (receipt.failure !== 'none') return 'empty_error';
+  if (!receipt.references.includes(entity)) return 'entity_mismatch';
+  if (!receiptFreshAtFinalization(receipt, rule, now)) return 'stale';
+  return 'supporting';
+}
+
+function evaluateFinalization({ completionId, sessionId, turnId, detectorResult, evidenceReceipts, policy, overrides = {}, now = new Date() } = {}) {
   if (typeof completionId !== 'string' || completionId.length === 0) throw new TypeError('completionId must be non-empty');
+  if (typeof sessionId !== 'string' || sessionId.length === 0) throw new TypeError('sessionId must be non-empty');
+  if (typeof turnId !== 'string' || turnId.length === 0) throw new TypeError('turnId must be non-empty');
   if (!detectorResult || typeof detectorResult.status !== 'string' || !Array.isArray(detectorResult.obligations)) {
     throw new TypeError('detectorResult is invalid');
   }
@@ -38,13 +56,18 @@ function evaluateFinalization({ completionId, detectorResult, evidenceReceipts, 
       const rule = policy.families[obligation.family];
       if (!rule) throw new TypeError(`unknown obligation family: ${obligation.family}`);
       const entity = normalize(obligation.entity);
-      // Deterministic relevance: an authoritative provider whose contact result references the claim entity.
-      const candidateContacts = evidenceReceipts.filter((receipt) => (
-        rule.authoritative_sources.includes(receipt.provider)
-        && receipt.references.includes(entity)
-        && receipt.failure === 'none'
+      // Considered = references the entity OR (in exact turn scope AND from an authoritative provider).
+      // This bounds noise while still surfacing wrong_authority / wrong_scope / entity_mismatch classes.
+      const considered = evidenceReceipts.filter((receipt) => (
+        receipt.references.includes(entity)
+        || (receipt.session_id === sessionId && receipt.turn_id === turnId
+            && rule.authoritative_sources.includes(receipt.provider))
       ));
-      const freshContacts = candidateContacts.filter((receipt) => receiptFreshAtFinalization(receipt, rule, now));
+      const dispositions = considered.map((receipt) => ({
+        evidence_id: receipt.evidence_id,
+        decision: receiptDisposition(receipt, rule, entity, sessionId, turnId, now),
+      }));
+      const supportingIds = dispositions.filter((item) => item.decision === 'supporting').map((item) => item.evidence_id);
       const override = Object.prototype.hasOwnProperty.call(overrides, obligation.claim_id)
         ? overrides[obligation.claim_id] : null;
 
@@ -55,21 +78,26 @@ function evaluateFinalization({ completionId, detectorResult, evidenceReceipts, 
         status = 'supported';
         matchMethod = 'override';
         overrideProvenance = override;
-      } else if (candidateContacts.length === 0) {
+      } else if (supportingIds.length > 0) {
+        status = 'supported';
+        matchMethod = 'entity_in_references';
+      } else if (dispositions.some((item) => item.decision === 'stale')) {
+        status = 'ambiguous';
+        matchMethod = 'entity_in_references';
+      } else {
         status = 'unsupported';
         matchMethod = 'none';
-      } else {
-        matchMethod = 'entity_in_references';
-        status = freshContacts.length > 0 ? 'supported' : 'ambiguous';
       }
       evaluations.push({
         claim_id: obligation.claim_id,
         claim: obligation.claim,
         family: obligation.family,
         entity: obligation.entity,
-        matched_evidence_ids: freshContacts.map((receipt) => receipt.evidence_id),
+        candidate_evidence_ids: considered.map((receipt) => receipt.evidence_id),
+        supporting_evidence_ids: supportingIds,
+        dispositions,
         match_method: matchMethod,
-        fresh_at_finalization: freshContacts.length > 0,
+        fresh_at_finalization: supportingIds.length > 0,
         status,
         override_provenance: overrideProvenance,
       });

@@ -5,13 +5,13 @@ const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  appendEvidenceReceipt, createEvidenceContactReceipt, extractReferences, validateEvidenceReceipt,
+  appendEvidenceReceipt, createEvidenceContactReceipt, extractReferences, redactSecrets, validateEvidenceReceipt,
 } = require('../src/evidence');
 
 const EVIDENCE_KEYS = [
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
   'capability', 'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
-  'references', 'failure',
+  'references', 'references_redacted', 'failure',
 ].sort();
 
 const base = {
@@ -33,6 +33,7 @@ test('evidence-contact receipt is a frozen, exact-keys, canonically-hashed objec
   assert.equal(receipt.result_nonempty, true);
   assert.equal(receipt.failure, 'none');
   assert.equal(receipt.observed_at, '2026-07-23T05:00:00.000Z');
+  assert.equal(receipt.references_redacted, 0);
   assert.doesNotThrow(() => validateEvidenceReceipt(receipt));
 });
 
@@ -47,6 +48,32 @@ test('raw tool args are never stored — only a hash and the sorted key names', 
 test('references are the deterministic relevance basis: lowercased, deduped, sorted identifiers and counts', () => {
   const receipt = createEvidenceContactReceipt(base);
   assert.deepEqual(receipt.references, ['37/37', 'api', 'live', 'tests']);
+  assert.equal(receipt.references_redacted, 0);
+});
+
+test('secret-shaped tokens in tool OUTPUT are redacted before they can persist as references', () => {
+  const receipt = createEvidenceContactReceipt({
+    ...base,
+    result: {
+      value: 'connected to postgres://user:pass@dbhost/store with key sk-ABCDEFGHIJKLMNOPQRSTUVWXYZ012345 for service lambda',
+      observed_at: '2026-07-23T05:00:00.000Z',
+    },
+  });
+  const serialized = JSON.stringify(receipt);
+  assert.equal(serialized.includes('sk-ABCDEFGHIJKLMNOPQRSTUVWXYZ012345'), false);
+  assert.equal(receipt.references.includes('pass'), false);
+  assert.equal(serialized.includes('pass@'), false);
+  assert.ok(receipt.references_redacted >= 1);
+  // normal identifiers survive
+  assert.ok(receipt.references.includes('postgres'));
+  assert.ok(receipt.references.includes('service'));
+  assert.ok(receipt.references.includes('lambda'));
+});
+
+test('redactSecrets masks known secret shapes and connection-string credentials', () => {
+  assert.equal(redactSecrets('token ghp_ABCDEFGHIJKLMNOPQRSTUVWX12345').includes('ghp_ABCDEFGHIJKLMNOPQRSTUVWX12345'), false);
+  assert.equal(redactSecrets('key AKIAIOSFODNN7EXAMPLE here').includes('AKIAIOSFODNN7EXAMPLE'), false);
+  assert.match(redactSecrets('mysql://root:hunter2@db/app'), /mysql:\/\/\*\*\*:\*\*\*@/);
 });
 
 test('capability is a pass-through label when provided', () => {
@@ -101,12 +128,14 @@ test('createEvidenceContactReceipt rejects malformed inputs', () => {
 });
 
 test('extractReferences handles strings, non-strings, dedupe, and empty', () => {
-  assert.deepEqual(extractReferences('API api Api foo-bar 12/12 ok'), ['12/12', 'api', 'foo-bar']);
-  assert.deepEqual(extractReferences({ service: 'lambda', count: 5 }), ['count', 'lambda', 'service']);
-  assert.deepEqual(extractReferences(''), []);
-  assert.deepEqual(extractReferences('a b c'), []);
+  assert.deepEqual(extractReferences('API api Api foo-bar 12/12 ok').references, ['12/12', 'api', 'foo-bar']);
+  assert.deepEqual(extractReferences({ service: 'lambda', count: 5 }).references, ['count', 'lambda', 'service']);
+  assert.deepEqual(extractReferences('').references, []);
+  assert.deepEqual(extractReferences('a b c').references, []);
+  const clean = extractReferences('API api Api foo-bar 12/12 ok');
+  assert.equal(clean.references_redacted, 0);
   const many = extractReferences(Array.from({ length: 500 }, (_, i) => `sym${String(i).padStart(4, '0')}`).join(' '));
-  assert.equal(many.length, 200);
+  assert.equal(many.references.length, 200);
 });
 
 test('appendEvidenceReceipt writes one validated JSONL row at mode 0600 without truncation', () => {

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "completed_at": "2026-07-23T05:09:22.670Z",
+  "source_revision": "5dad70d40c8e05a11a436ff942ec1e3750871a06",
+  "raw_sha256": "12ed3eab15dbefa1a47b35965a2305da478d486ba819a42ddb162f409fe00471",
+  "labeled_gold_sha256": "d6ce98a402a662efd3c7e5a4c458f82489e0add7e3ae30885e679df4eb4af367",
+  "lock_sha256": "f938561ffdc327f2040097cd8d3acb92dc5a07824d0e1756ba4e81826922f6d4",
+  "embed_model_identity": "ollama:bge-m3:latest@7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+  "classifier_fingerprint": "semantic-646b5ae331f9cd9c",
+  "planner_executions": 200,
+  "semantic_classifier_calls": 219,
+  "primary_exclusions": [
+    "eval2-000112"
+  ]
+}

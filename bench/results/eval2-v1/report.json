@@ -1,0 +1,2149 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "source_revision": "5dad70d40c8e05a11a436ff942ec1e3750871a06",
+  "lock_sha256": "f938561ffdc327f2040097cd8d3acb92dc5a07824d0e1756ba4e81826922f6d4",
+  "raw_sha256": "12ed3eab15dbefa1a47b35965a2305da478d486ba819a42ddb162f409fe00471",
+  "labeled_gold_sha256": "d6ce98a402a662efd3c7e5a4c458f82489e0add7e3ae30885e679df4eb4af367",
+  "embed_model_identity": "ollama:bge-m3:latest@7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+  "classifier_fingerprint": "semantic-646b5ae331f9cd9c",
+  "planner_executions": 200,
+  "semantic_classifier_calls": 219,
+  "primary": {
+    "n": 199,
+    "excluded_ids": [
+      "eval2-000112"
+    ],
+    "metrics": {
+      "counts": {
+        "total": 199,
+        "gold_routed": 73,
+        "gold_abstain": 126,
+        "predicted_routed": 17,
+        "correct_first_family": 6,
+        "false_routes_on_true_abstains": 4,
+        "exact_plan": 127
+      },
+      "routed_evidence_request_recall": 0.0821917808219178,
+      "routed_first_family_precision": 0.35294117647058826,
+      "false_route_rate_on_true_abstains": 0.031746031746031744,
+      "gold_abstention_recall": 0.9682539682539683,
+      "exact_plan_rate": 0.6381909547738693,
+      "macro_first_family_recall": 0.06434108527131784,
+      "per_family": {
+        "historical": {
+          "gold": 43,
+          "correct": 4,
+          "predicted": 4,
+          "recall": 0.09302325581395349,
+          "precision": 1
+        },
+        "structural": {
+          "gold": 0,
+          "correct": 0,
+          "predicted": 0,
+          "recall": null,
+          "precision": null
+        },
+        "repository": {
+          "gold": 10,
+          "correct": 0,
+          "predicted": 0,
+          "recall": 0,
+          "precision": null
+        },
+        "runtime": {
+          "gold": 20,
+          "correct": 2,
+          "predicted": 13,
+          "recall": 0.1,
+          "precision": 0.15384615384615385
+        }
+      }
+    },
+    "strata": {
+      "definitions": {
+        "terse": "normalized whitespace token count <= 8",
+        "detailed": "normalized whitespace token count >= 9",
+        "route_cardinality": "gold evidence-route cardinality; this is a route-intent proxy, not a general linguistic intent annotation",
+        "historical_runtime_boundary_proxy": "gold first family is historical or runtime and label confidence is not high",
+        "label_agreement": "optional audit agreement annotation; not_recorded when absent"
+      },
+      "gold_family": {
+        "abstain": {
+          "counts": {
+            "total": 126,
+            "gold_routed": 0,
+            "gold_abstain": 126,
+            "predicted_routed": 4,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 122
+          },
+          "routed_evidence_request_recall": null,
+          "routed_first_family_precision": 0,
+          "false_route_rate_on_true_abstains": 0.031746031746031744,
+          "gold_abstention_recall": 0.9682539682539683,
+          "exact_plan_rate": 0.9682539682539683,
+          "macro_first_family_recall": null,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 4,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "historical": {
+          "counts": {
+            "total": 43,
+            "gold_routed": 43,
+            "gold_abstain": 0,
+            "predicted_routed": 10,
+            "correct_first_family": 4,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 4
+          },
+          "routed_evidence_request_recall": 0.09302325581395349,
+          "routed_first_family_precision": 0.4,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.09302325581395349,
+          "macro_first_family_recall": 0.09302325581395349,
+          "per_family": {
+            "historical": {
+              "gold": 43,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.09302325581395349,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 6,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "structural": null,
+        "repository": {
+          "counts": {
+            "total": 10,
+            "gold_routed": 10,
+            "gold_abstain": 0,
+            "predicted_routed": 1,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 0
+          },
+          "routed_evidence_request_recall": 0,
+          "routed_first_family_precision": 0,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0,
+          "macro_first_family_recall": 0,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 10,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 1,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "runtime": {
+          "counts": {
+            "total": 20,
+            "gold_routed": 20,
+            "gold_abstain": 0,
+            "predicted_routed": 2,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 1
+          },
+          "routed_evidence_request_recall": 0.1,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.05,
+          "macro_first_family_recall": 0.1,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 20,
+              "correct": 2,
+              "predicted": 2,
+              "recall": 0.1,
+              "precision": 1
+            }
+          }
+        }
+      },
+      "prompt_detail": {
+        "terse": {
+          "counts": {
+            "total": 87,
+            "gold_routed": 17,
+            "gold_abstain": 70,
+            "predicted_routed": 8,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 67
+          },
+          "routed_evidence_request_recall": 0.058823529411764705,
+          "routed_first_family_precision": 0.125,
+          "false_route_rate_on_true_abstains": 0.05714285714285714,
+          "gold_abstention_recall": 0.9428571428571428,
+          "exact_plan_rate": 0.7701149425287356,
+          "macro_first_family_recall": 0.023809523809523808,
+          "per_family": {
+            "historical": {
+              "gold": 14,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.07142857142857142,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 2,
+              "correct": 0,
+              "predicted": 7,
+              "recall": 0,
+              "precision": 0
+            }
+          }
+        },
+        "detailed": {
+          "counts": {
+            "total": 112,
+            "gold_routed": 56,
+            "gold_abstain": 56,
+            "predicted_routed": 9,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 60
+          },
+          "routed_evidence_request_recall": 0.08928571428571429,
+          "routed_first_family_precision": 0.5555555555555556,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.5357142857142857,
+          "macro_first_family_recall": 0.07151979565772669,
+          "per_family": {
+            "historical": {
+              "gold": 29,
+              "correct": 3,
+              "predicted": 3,
+              "recall": 0.10344827586206896,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 9,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 18,
+              "correct": 2,
+              "predicted": 6,
+              "recall": 0.1111111111111111,
+              "precision": 0.3333333333333333
+            }
+          }
+        }
+      },
+      "route_cardinality": {
+        "abstain": {
+          "counts": {
+            "total": 126,
+            "gold_routed": 0,
+            "gold_abstain": 126,
+            "predicted_routed": 4,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 122
+          },
+          "routed_evidence_request_recall": null,
+          "routed_first_family_precision": 0,
+          "false_route_rate_on_true_abstains": 0.031746031746031744,
+          "gold_abstention_recall": 0.9682539682539683,
+          "exact_plan_rate": 0.9682539682539683,
+          "macro_first_family_recall": null,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 4,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "single": {
+          "counts": {
+            "total": 59,
+            "gold_routed": 59,
+            "gold_abstain": 0,
+            "predicted_routed": 12,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 5
+          },
+          "routed_evidence_request_recall": 0.0847457627118644,
+          "routed_first_family_precision": 0.4166666666666667,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.0847457627118644,
+          "macro_first_family_recall": 0.06072874493927125,
+          "per_family": {
+            "historical": {
+              "gold": 38,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.10526315789473684,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 8,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 13,
+              "correct": 1,
+              "predicted": 8,
+              "recall": 0.07692307692307693,
+              "precision": 0.125
+            }
+          }
+        },
+        "multi": {
+          "counts": {
+            "total": 14,
+            "gold_routed": 14,
+            "gold_abstain": 0,
+            "predicted_routed": 1,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 0
+          },
+          "routed_evidence_request_recall": 0.07142857142857142,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0,
+          "macro_first_family_recall": 0.047619047619047616,
+          "per_family": {
+            "historical": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 2,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 7,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.14285714285714285,
+              "precision": 1
+            }
+          }
+        }
+      },
+      "historical_runtime": {
+        "historical": {
+          "counts": {
+            "total": 43,
+            "gold_routed": 43,
+            "gold_abstain": 0,
+            "predicted_routed": 10,
+            "correct_first_family": 4,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 4
+          },
+          "routed_evidence_request_recall": 0.09302325581395349,
+          "routed_first_family_precision": 0.4,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.09302325581395349,
+          "macro_first_family_recall": 0.09302325581395349,
+          "per_family": {
+            "historical": {
+              "gold": 43,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.09302325581395349,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 6,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "runtime": {
+          "counts": {
+            "total": 20,
+            "gold_routed": 20,
+            "gold_abstain": 0,
+            "predicted_routed": 2,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 1
+          },
+          "routed_evidence_request_recall": 0.1,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.05,
+          "macro_first_family_recall": 0.1,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 20,
+              "correct": 2,
+              "predicted": 2,
+              "recall": 0.1,
+              "precision": 1
+            }
+          }
+        },
+        "boundary_proxy": {
+          "counts": {
+            "total": 14,
+            "gold_routed": 14,
+            "gold_abstain": 0,
+            "predicted_routed": 1,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 1
+          },
+          "routed_evidence_request_recall": 0.07142857142857142,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.07142857142857142,
+          "macro_first_family_recall": 0.0625,
+          "per_family": {
+            "historical": {
+              "gold": 6,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 8,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.125,
+              "precision": 1
+            }
+          }
+        }
+      },
+      "label_confidence": {
+        "high": {
+          "counts": {
+            "total": 174,
+            "gold_routed": 53,
+            "gold_abstain": 121,
+            "predicted_routed": 14,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 3,
+            "exact_plan": 122
+          },
+          "routed_evidence_request_recall": 0.09433962264150944,
+          "routed_first_family_precision": 0.35714285714285715,
+          "false_route_rate_on_true_abstains": 0.024793388429752067,
+          "gold_abstention_recall": 0.9752066115702479,
+          "exact_plan_rate": 0.7011494252873564,
+          "macro_first_family_recall": 0.0638138138138138,
+          "per_family": {
+            "historical": {
+              "gold": 37,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.10810810810810811,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 4,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 12,
+              "correct": 1,
+              "predicted": 10,
+              "recall": 0.08333333333333333,
+              "precision": 0.1
+            }
+          }
+        },
+        "low": {
+          "counts": {
+            "total": 3,
+            "gold_routed": 1,
+            "gold_abstain": 2,
+            "predicted_routed": 0,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 2
+          },
+          "routed_evidence_request_recall": 0,
+          "routed_first_family_precision": null,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.6666666666666666,
+          "macro_first_family_recall": 0,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            }
+          }
+        },
+        "medium": {
+          "counts": {
+            "total": 22,
+            "gold_routed": 19,
+            "gold_abstain": 3,
+            "predicted_routed": 3,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 1,
+            "exact_plan": 3
+          },
+          "routed_evidence_request_recall": 0.05263157894736842,
+          "routed_first_family_precision": 0.3333333333333333,
+          "false_route_rate_on_true_abstains": 0.3333333333333333,
+          "gold_abstention_recall": 0.6666666666666666,
+          "exact_plan_rate": 0.13636363636363635,
+          "macro_first_family_recall": 0.047619047619047616,
+          "per_family": {
+            "historical": {
+              "gold": 6,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 6,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 7,
+              "correct": 1,
+              "predicted": 3,
+              "recall": 0.14285714285714285,
+              "precision": 0.3333333333333333
+            }
+          }
+        }
+      },
+      "context_dependency": {
+        "both": {
+          "counts": {
+            "total": 29,
+            "gold_routed": 14,
+            "gold_abstain": 15,
+            "predicted_routed": 2,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 17
+          },
+          "routed_evidence_request_recall": 0.14285714285714285,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.5862068965517241,
+          "macro_first_family_recall": 0.13095238095238096,
+          "per_family": {
+            "historical": {
+              "gold": 4,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.25,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 3,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 7,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.14285714285714285,
+              "precision": 1
+            }
+          }
+        },
+        "none": {
+          "counts": {
+            "total": 34,
+            "gold_routed": 8,
+            "gold_abstain": 26,
+            "predicted_routed": 4,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 1,
+            "exact_plan": 26
+          },
+          "routed_evidence_request_recall": 0.125,
+          "routed_first_family_precision": 0.25,
+          "false_route_rate_on_true_abstains": 0.038461538461538464,
+          "gold_abstention_recall": 0.9615384615384616,
+          "exact_plan_rate": 0.7647058823529411,
+          "macro_first_family_recall": 0.05555555555555555,
+          "per_family": {
+            "historical": {
+              "gold": 6,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.16666666666666666,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 3,
+              "recall": 0,
+              "precision": 0
+            }
+          }
+        },
+        "project": {
+          "counts": {
+            "total": 67,
+            "gold_routed": 31,
+            "gold_abstain": 36,
+            "predicted_routed": 7,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 1,
+            "exact_plan": 35
+          },
+          "routed_evidence_request_recall": 0.03225806451612903,
+          "routed_first_family_precision": 0.14285714285714285,
+          "false_route_rate_on_true_abstains": 0.027777777777777776,
+          "gold_abstention_recall": 0.9722222222222222,
+          "exact_plan_rate": 0.5223880597014925,
+          "macro_first_family_recall": 0.041666666666666664,
+          "per_family": {
+            "historical": {
+              "gold": 18,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 8,
+              "correct": 1,
+              "predicted": 7,
+              "recall": 0.125,
+              "precision": 0.14285714285714285
+            }
+          }
+        },
+        "referent": {
+          "counts": {
+            "total": 69,
+            "gold_routed": 20,
+            "gold_abstain": 49,
+            "predicted_routed": 4,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 2,
+            "exact_plan": 49
+          },
+          "routed_evidence_request_recall": 0.1,
+          "routed_first_family_precision": 0.5,
+          "false_route_rate_on_true_abstains": 0.04081632653061224,
+          "gold_abstention_recall": 0.9591836734693877,
+          "exact_plan_rate": 0.7101449275362319,
+          "macro_first_family_recall": 0.044444444444444446,
+          "per_family": {
+            "historical": {
+              "gold": 15,
+              "correct": 2,
+              "predicted": 2,
+              "recall": 0.13333333333333333,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 4,
+              "correct": 0,
+              "predicted": 2,
+              "recall": 0,
+              "precision": 0
+            }
+          }
+        }
+      },
+      "label_agreement": {
+        "unanimous": {
+          "counts": {
+            "total": 157,
+            "gold_routed": 34,
+            "gold_abstain": 123,
+            "predicted_routed": 10,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 123
+          },
+          "routed_evidence_request_recall": 0.14705882352941177,
+          "routed_first_family_precision": 0.5,
+          "false_route_rate_on_true_abstains": 0.032520325203252036,
+          "gold_abstention_recall": 0.967479674796748,
+          "exact_plan_rate": 0.7834394904458599,
+          "macro_first_family_recall": 0.10437710437710439,
+          "per_family": {
+            "historical": {
+              "gold": 18,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.2222222222222222,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 11,
+              "correct": 1,
+              "predicted": 6,
+              "recall": 0.09090909090909091,
+              "precision": 0.16666666666666666
+            }
+          }
+        },
+        "disputed": {
+          "counts": {
+            "total": 42,
+            "gold_routed": 39,
+            "gold_abstain": 3,
+            "predicted_routed": 7,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 4
+          },
+          "routed_evidence_request_recall": 0.02564102564102564,
+          "routed_first_family_precision": 0.14285714285714285,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.09523809523809523,
+          "macro_first_family_recall": 0.037037037037037035,
+          "per_family": {
+            "historical": {
+              "gold": 25,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 9,
+              "correct": 1,
+              "predicted": 7,
+              "recall": 0.1111111111111111,
+              "precision": 0.14285714285714285
+            }
+          }
+        },
+        "not_recorded": null
+      }
+    },
+    "historical_runtime_confusion": {
+      "historical_gold_predicted_runtime": 6,
+      "runtime_gold_predicted_historical": 0,
+      "historical_or_runtime_gold": 63
+    }
+  },
+  "inclusive_sensitivity": {
+    "n": 200,
+    "metrics": {
+      "counts": {
+        "total": 200,
+        "gold_routed": 73,
+        "gold_abstain": 127,
+        "predicted_routed": 17,
+        "correct_first_family": 6,
+        "false_routes_on_true_abstains": 4,
+        "exact_plan": 128
+      },
+      "routed_evidence_request_recall": 0.0821917808219178,
+      "routed_first_family_precision": 0.35294117647058826,
+      "false_route_rate_on_true_abstains": 0.031496062992125984,
+      "gold_abstention_recall": 0.968503937007874,
+      "exact_plan_rate": 0.64,
+      "macro_first_family_recall": 0.06434108527131784,
+      "per_family": {
+        "historical": {
+          "gold": 43,
+          "correct": 4,
+          "predicted": 4,
+          "recall": 0.09302325581395349,
+          "precision": 1
+        },
+        "structural": {
+          "gold": 0,
+          "correct": 0,
+          "predicted": 0,
+          "recall": null,
+          "precision": null
+        },
+        "repository": {
+          "gold": 10,
+          "correct": 0,
+          "predicted": 0,
+          "recall": 0,
+          "precision": null
+        },
+        "runtime": {
+          "gold": 20,
+          "correct": 2,
+          "predicted": 13,
+          "recall": 0.1,
+          "precision": 0.15384615384615385
+        }
+      }
+    },
+    "strata": {
+      "definitions": {
+        "terse": "normalized whitespace token count <= 8",
+        "detailed": "normalized whitespace token count >= 9",
+        "route_cardinality": "gold evidence-route cardinality; this is a route-intent proxy, not a general linguistic intent annotation",
+        "historical_runtime_boundary_proxy": "gold first family is historical or runtime and label confidence is not high",
+        "label_agreement": "optional audit agreement annotation; not_recorded when absent"
+      },
+      "gold_family": {
+        "abstain": {
+          "counts": {
+            "total": 127,
+            "gold_routed": 0,
+            "gold_abstain": 127,
+            "predicted_routed": 4,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 123
+          },
+          "routed_evidence_request_recall": null,
+          "routed_first_family_precision": 0,
+          "false_route_rate_on_true_abstains": 0.031496062992125984,
+          "gold_abstention_recall": 0.968503937007874,
+          "exact_plan_rate": 0.968503937007874,
+          "macro_first_family_recall": null,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 4,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "historical": {
+          "counts": {
+            "total": 43,
+            "gold_routed": 43,
+            "gold_abstain": 0,
+            "predicted_routed": 10,
+            "correct_first_family": 4,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 4
+          },
+          "routed_evidence_request_recall": 0.09302325581395349,
+          "routed_first_family_precision": 0.4,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.09302325581395349,
+          "macro_first_family_recall": 0.09302325581395349,
+          "per_family": {
+            "historical": {
+              "gold": 43,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.09302325581395349,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 6,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "structural": null,
+        "repository": {
+          "counts": {
+            "total": 10,
+            "gold_routed": 10,
+            "gold_abstain": 0,
+            "predicted_routed": 1,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 0
+          },
+          "routed_evidence_request_recall": 0,
+          "routed_first_family_precision": 0,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0,
+          "macro_first_family_recall": 0,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 10,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 1,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "runtime": {
+          "counts": {
+            "total": 20,
+            "gold_routed": 20,
+            "gold_abstain": 0,
+            "predicted_routed": 2,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 1
+          },
+          "routed_evidence_request_recall": 0.1,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.05,
+          "macro_first_family_recall": 0.1,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 20,
+              "correct": 2,
+              "predicted": 2,
+              "recall": 0.1,
+              "precision": 1
+            }
+          }
+        }
+      },
+      "prompt_detail": {
+        "terse": {
+          "counts": {
+            "total": 88,
+            "gold_routed": 17,
+            "gold_abstain": 71,
+            "predicted_routed": 8,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 68
+          },
+          "routed_evidence_request_recall": 0.058823529411764705,
+          "routed_first_family_precision": 0.125,
+          "false_route_rate_on_true_abstains": 0.056338028169014086,
+          "gold_abstention_recall": 0.9436619718309859,
+          "exact_plan_rate": 0.7727272727272727,
+          "macro_first_family_recall": 0.023809523809523808,
+          "per_family": {
+            "historical": {
+              "gold": 14,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.07142857142857142,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 2,
+              "correct": 0,
+              "predicted": 7,
+              "recall": 0,
+              "precision": 0
+            }
+          }
+        },
+        "detailed": {
+          "counts": {
+            "total": 112,
+            "gold_routed": 56,
+            "gold_abstain": 56,
+            "predicted_routed": 9,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 60
+          },
+          "routed_evidence_request_recall": 0.08928571428571429,
+          "routed_first_family_precision": 0.5555555555555556,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.5357142857142857,
+          "macro_first_family_recall": 0.07151979565772669,
+          "per_family": {
+            "historical": {
+              "gold": 29,
+              "correct": 3,
+              "predicted": 3,
+              "recall": 0.10344827586206896,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 9,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 18,
+              "correct": 2,
+              "predicted": 6,
+              "recall": 0.1111111111111111,
+              "precision": 0.3333333333333333
+            }
+          }
+        }
+      },
+      "route_cardinality": {
+        "abstain": {
+          "counts": {
+            "total": 127,
+            "gold_routed": 0,
+            "gold_abstain": 127,
+            "predicted_routed": 4,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 123
+          },
+          "routed_evidence_request_recall": null,
+          "routed_first_family_precision": 0,
+          "false_route_rate_on_true_abstains": 0.031496062992125984,
+          "gold_abstention_recall": 0.968503937007874,
+          "exact_plan_rate": 0.968503937007874,
+          "macro_first_family_recall": null,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 4,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "single": {
+          "counts": {
+            "total": 59,
+            "gold_routed": 59,
+            "gold_abstain": 0,
+            "predicted_routed": 12,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 5
+          },
+          "routed_evidence_request_recall": 0.0847457627118644,
+          "routed_first_family_precision": 0.4166666666666667,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.0847457627118644,
+          "macro_first_family_recall": 0.06072874493927125,
+          "per_family": {
+            "historical": {
+              "gold": 38,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.10526315789473684,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 8,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 13,
+              "correct": 1,
+              "predicted": 8,
+              "recall": 0.07692307692307693,
+              "precision": 0.125
+            }
+          }
+        },
+        "multi": {
+          "counts": {
+            "total": 14,
+            "gold_routed": 14,
+            "gold_abstain": 0,
+            "predicted_routed": 1,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 0
+          },
+          "routed_evidence_request_recall": 0.07142857142857142,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0,
+          "macro_first_family_recall": 0.047619047619047616,
+          "per_family": {
+            "historical": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 2,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 7,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.14285714285714285,
+              "precision": 1
+            }
+          }
+        }
+      },
+      "historical_runtime": {
+        "historical": {
+          "counts": {
+            "total": 43,
+            "gold_routed": 43,
+            "gold_abstain": 0,
+            "predicted_routed": 10,
+            "correct_first_family": 4,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 4
+          },
+          "routed_evidence_request_recall": 0.09302325581395349,
+          "routed_first_family_precision": 0.4,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.09302325581395349,
+          "macro_first_family_recall": 0.09302325581395349,
+          "per_family": {
+            "historical": {
+              "gold": 43,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.09302325581395349,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 6,
+              "recall": null,
+              "precision": 0
+            }
+          }
+        },
+        "runtime": {
+          "counts": {
+            "total": 20,
+            "gold_routed": 20,
+            "gold_abstain": 0,
+            "predicted_routed": 2,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 1
+          },
+          "routed_evidence_request_recall": 0.1,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.05,
+          "macro_first_family_recall": 0.1,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 20,
+              "correct": 2,
+              "predicted": 2,
+              "recall": 0.1,
+              "precision": 1
+            }
+          }
+        },
+        "boundary_proxy": {
+          "counts": {
+            "total": 14,
+            "gold_routed": 14,
+            "gold_abstain": 0,
+            "predicted_routed": 1,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 1
+          },
+          "routed_evidence_request_recall": 0.07142857142857142,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": null,
+          "gold_abstention_recall": null,
+          "exact_plan_rate": 0.07142857142857142,
+          "macro_first_family_recall": 0.0625,
+          "per_family": {
+            "historical": {
+              "gold": 6,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 8,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.125,
+              "precision": 1
+            }
+          }
+        }
+      },
+      "label_confidence": {
+        "high": {
+          "counts": {
+            "total": 175,
+            "gold_routed": 53,
+            "gold_abstain": 122,
+            "predicted_routed": 14,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 3,
+            "exact_plan": 123
+          },
+          "routed_evidence_request_recall": 0.09433962264150944,
+          "routed_first_family_precision": 0.35714285714285715,
+          "false_route_rate_on_true_abstains": 0.02459016393442623,
+          "gold_abstention_recall": 0.9754098360655737,
+          "exact_plan_rate": 0.7028571428571428,
+          "macro_first_family_recall": 0.0638138138138138,
+          "per_family": {
+            "historical": {
+              "gold": 37,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.10810810810810811,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 4,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 12,
+              "correct": 1,
+              "predicted": 10,
+              "recall": 0.08333333333333333,
+              "precision": 0.1
+            }
+          }
+        },
+        "low": {
+          "counts": {
+            "total": 3,
+            "gold_routed": 1,
+            "gold_abstain": 2,
+            "predicted_routed": 0,
+            "correct_first_family": 0,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 2
+          },
+          "routed_evidence_request_recall": 0,
+          "routed_first_family_precision": null,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.6666666666666666,
+          "macro_first_family_recall": 0,
+          "per_family": {
+            "historical": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            }
+          }
+        },
+        "medium": {
+          "counts": {
+            "total": 22,
+            "gold_routed": 19,
+            "gold_abstain": 3,
+            "predicted_routed": 3,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 1,
+            "exact_plan": 3
+          },
+          "routed_evidence_request_recall": 0.05263157894736842,
+          "routed_first_family_precision": 0.3333333333333333,
+          "false_route_rate_on_true_abstains": 0.3333333333333333,
+          "gold_abstention_recall": 0.6666666666666666,
+          "exact_plan_rate": 0.13636363636363635,
+          "macro_first_family_recall": 0.047619047619047616,
+          "per_family": {
+            "historical": {
+              "gold": 6,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 6,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 7,
+              "correct": 1,
+              "predicted": 3,
+              "recall": 0.14285714285714285,
+              "precision": 0.3333333333333333
+            }
+          }
+        }
+      },
+      "context_dependency": {
+        "both": {
+          "counts": {
+            "total": 29,
+            "gold_routed": 14,
+            "gold_abstain": 15,
+            "predicted_routed": 2,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 17
+          },
+          "routed_evidence_request_recall": 0.14285714285714285,
+          "routed_first_family_precision": 1,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.5862068965517241,
+          "macro_first_family_recall": 0.13095238095238096,
+          "per_family": {
+            "historical": {
+              "gold": 4,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.25,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 3,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 7,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.14285714285714285,
+              "precision": 1
+            }
+          }
+        },
+        "none": {
+          "counts": {
+            "total": 35,
+            "gold_routed": 8,
+            "gold_abstain": 27,
+            "predicted_routed": 4,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 1,
+            "exact_plan": 27
+          },
+          "routed_evidence_request_recall": 0.125,
+          "routed_first_family_precision": 0.25,
+          "false_route_rate_on_true_abstains": 0.037037037037037035,
+          "gold_abstention_recall": 0.9629629629629629,
+          "exact_plan_rate": 0.7714285714285715,
+          "macro_first_family_recall": 0.05555555555555555,
+          "per_family": {
+            "historical": {
+              "gold": 6,
+              "correct": 1,
+              "predicted": 1,
+              "recall": 0.16666666666666666,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 3,
+              "recall": 0,
+              "precision": 0
+            }
+          }
+        },
+        "project": {
+          "counts": {
+            "total": 67,
+            "gold_routed": 31,
+            "gold_abstain": 36,
+            "predicted_routed": 7,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 1,
+            "exact_plan": 35
+          },
+          "routed_evidence_request_recall": 0.03225806451612903,
+          "routed_first_family_precision": 0.14285714285714285,
+          "false_route_rate_on_true_abstains": 0.027777777777777776,
+          "gold_abstention_recall": 0.9722222222222222,
+          "exact_plan_rate": 0.5223880597014925,
+          "macro_first_family_recall": 0.041666666666666664,
+          "per_family": {
+            "historical": {
+              "gold": 18,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 8,
+              "correct": 1,
+              "predicted": 7,
+              "recall": 0.125,
+              "precision": 0.14285714285714285
+            }
+          }
+        },
+        "referent": {
+          "counts": {
+            "total": 69,
+            "gold_routed": 20,
+            "gold_abstain": 49,
+            "predicted_routed": 4,
+            "correct_first_family": 2,
+            "false_routes_on_true_abstains": 2,
+            "exact_plan": 49
+          },
+          "routed_evidence_request_recall": 0.1,
+          "routed_first_family_precision": 0.5,
+          "false_route_rate_on_true_abstains": 0.04081632653061224,
+          "gold_abstention_recall": 0.9591836734693877,
+          "exact_plan_rate": 0.7101449275362319,
+          "macro_first_family_recall": 0.044444444444444446,
+          "per_family": {
+            "historical": {
+              "gold": 15,
+              "correct": 2,
+              "predicted": 2,
+              "recall": 0.13333333333333333,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 1,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 4,
+              "correct": 0,
+              "predicted": 2,
+              "recall": 0,
+              "precision": 0
+            }
+          }
+        }
+      },
+      "label_agreement": {
+        "unanimous": {
+          "counts": {
+            "total": 158,
+            "gold_routed": 34,
+            "gold_abstain": 124,
+            "predicted_routed": 10,
+            "correct_first_family": 5,
+            "false_routes_on_true_abstains": 4,
+            "exact_plan": 124
+          },
+          "routed_evidence_request_recall": 0.14705882352941177,
+          "routed_first_family_precision": 0.5,
+          "false_route_rate_on_true_abstains": 0.03225806451612903,
+          "gold_abstention_recall": 0.967741935483871,
+          "exact_plan_rate": 0.7848101265822784,
+          "macro_first_family_recall": 0.10437710437710439,
+          "per_family": {
+            "historical": {
+              "gold": 18,
+              "correct": 4,
+              "predicted": 4,
+              "recall": 0.2222222222222222,
+              "precision": 1
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 11,
+              "correct": 1,
+              "predicted": 6,
+              "recall": 0.09090909090909091,
+              "precision": 0.16666666666666666
+            }
+          }
+        },
+        "disputed": {
+          "counts": {
+            "total": 42,
+            "gold_routed": 39,
+            "gold_abstain": 3,
+            "predicted_routed": 7,
+            "correct_first_family": 1,
+            "false_routes_on_true_abstains": 0,
+            "exact_plan": 4
+          },
+          "routed_evidence_request_recall": 0.02564102564102564,
+          "routed_first_family_precision": 0.14285714285714285,
+          "false_route_rate_on_true_abstains": 0,
+          "gold_abstention_recall": 1,
+          "exact_plan_rate": 0.09523809523809523,
+          "macro_first_family_recall": 0.037037037037037035,
+          "per_family": {
+            "historical": {
+              "gold": 25,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "structural": {
+              "gold": 0,
+              "correct": 0,
+              "predicted": 0,
+              "recall": null,
+              "precision": null
+            },
+            "repository": {
+              "gold": 5,
+              "correct": 0,
+              "predicted": 0,
+              "recall": 0,
+              "precision": null
+            },
+            "runtime": {
+              "gold": 9,
+              "correct": 1,
+              "predicted": 7,
+              "recall": 0.1111111111111111,
+              "precision": 0.14285714285714285
+            }
+          }
+        },
+        "not_recorded": null
+      }
+    },
+    "historical_runtime_confusion": {
+      "historical_gold_predicted_runtime": 6,
+      "runtime_gold_predicted_historical": 0,
+      "historical_or_runtime_gold": 63
+    }
+  }
+}

@@ -1,0 +1,22 @@
+
+LLM classifier on CALIBRATION (dev, N=200; routed-gold=76, abstain-gold=124)
+  routed evidence-cases: 47/76
+  first-family correct (of routed-gold): 35/76 = 46.1%
+  routed precision (correct of routed): 74.5%
+  false-routes on true-abstains: 11/124  → abstain-recall 91.1%
+
+  vs deterministic gate (Dae's lock): first-family 4/76 routed-recall = 5.26%, abstain-recall 100%
+
+  confusion gold->pred (top):
+    abstain->abstain: 113
+    historical->abstain: 19
+    historical->historical: 18
+    runtime->runtime: 10
+    repository->repository: 7
+    repository->abstain: 5
+    runtime->abstain: 5
+    abstain->repository: 4
+    abstain->runtime: 4
+    runtime->historical: 3
+    historical->repository: 3
+    runtime->repository: 2

@@ -130,7 +130,8 @@ function createClaimSupportReceipt({ obligation, authority, toolCall, result, no
     family: obligation.family,
     entity: obligation.entity,
     source: toolCall.provider,
-    authority_tier: authority.authority_tier,
+    // wrong-source contact is not authoritative for this family → no tier (matches validateReceipt)
+    authority_tier: failure === 'wrong_source' ? null : authority.authority_tier,
     tool: { provider: toolCall.provider, name: toolCall.name, args: toolCall.args },
     timestamp: now.toISOString(),
     freshness: {

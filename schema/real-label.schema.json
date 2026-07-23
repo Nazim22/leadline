@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/real-label.schema.json",
+  "title": "Leadline Real-Corpus Blind Label",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "prompt",
+    "source_hash",
+    "cluster_id",
+    "gold_route",
+    "label_confidence",
+    "context_dependency",
+    "label_note",
+    "rubric_version",
+    "labeler"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "prompt": { "type": "string", "minLength": 1 },
+    "source_hash": { "type": "string", "minLength": 1 },
+    "cluster_id": { "type": "string", "minLength": 1 },
+    "gold_route": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["historical", "structural", "repository", "runtime"]
+      }
+    },
+    "label_confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "context_dependency": {
+      "type": "string",
+      "enum": ["none", "referent", "project", "both"]
+    },
+    "label_note": { "type": "string" },
+    "rubric_version": { "const": "real-v1" },
+    "labeler": { "type": "string", "minLength": 1 }
+  }
+}

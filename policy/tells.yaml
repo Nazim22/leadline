@@ -10,7 +10,7 @@ tells:
   - id: hist-decided
     family: historical
     terminal: true
-    phrases: ["what did we decide", "why did we choose", "what did we settle on", "what was the decision"]
+    phrases: ["what did we decide", "what we decided", "why did we choose", "what did we settle on", "what was the decision"]
   - id: hist-shipped
     family: historical
     terminal: true
@@ -30,13 +30,13 @@ tells:
   - id: repo-bytes
     family: repository
     terminal: true
-    phrases: ["exact contents", "current contents", "show the file", "exact file", "what does line", "line * of", "exact line", "git diff", "show diff", "at commit", "literal value", "the bytes"]
+    phrases: ["exact contents", "current contents", "show the file", "exact file", "exact implementation", "add a docstring", "what does line", "line * of", "exact line", "git diff", "show diff", "at commit", "literal value", "the bytes"]
 
   # ---- runtime: require a runtime noun or temporal/status qualifier ----
   - id: runtime-state
     family: runtime
     terminal: true
-    phrases: ["running now", "currently deployed", "is deployed", "which version is live", "what version is deployed", "health endpoint", "is * responding", "responding now", "alive now", "live right now", "port * open", "is the * up"]
+    phrases: ["running now", "currently deployed", "is deployed", "is it live", "which version is live", "what version is deployed", "health endpoint", "is * responding", "responding now", "alive now", "live right now", "port * open", "is the * up"]
 
 # Clause-scoped exclusions. When a clause contains an exclude phrase, the named family
 # is suppressed FOR THAT CLAUSE only — not a global abstention.

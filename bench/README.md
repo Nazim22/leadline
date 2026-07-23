@@ -29,4 +29,6 @@ Also compare a plain embedding nearest-route **for classification only** — not
 - routing latency
 
 ## Run
-`(runner is V0 work — landing on dae/contrib)`
+`npm run bench`
+
+The runner executes both corpora separately, prints `N` prominently, lists every miss, and then runs the satisfaction simulation. It deliberately does not tune against or rewrite `eval-corpus.jsonl`.

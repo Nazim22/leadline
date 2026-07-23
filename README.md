@@ -24,7 +24,17 @@ Coding agents pick tools by willpower. They trust stale context, and they fake t
 4. **Record use receipts** — did the tool return usable, relevant evidence? A mere invocation never advances the contract.
 
 ## Status
-`v0.0.1` — **pre-alpha, private.** Measurement-first: building the route-contract schema, a labeled prompt corpus, and deterministic tells before any enforcement ships. Not yet installable. Not for distribution.
+`v0.0.1` — **pre-alpha, private.** V0 measurement engine is runnable: deterministic decomposition, high-precision tells, ordered route contracts, frozen evaluation, and offline satisfaction simulation. **No enforcement or embeddings ship yet.** Not for distribution.
+
+## Run
+```bash
+npm install
+npm test
+npm run bench
+node ./bin/leadline.js route "did we ship the graph fix, and is it live?"
+```
+
+`route` prints the Evidence Route Contract as JSON. `bench` scores the tuning and frozen corpora separately, prints every miss, and verifies that empty, irrelevant, ritual, or stale results do not satisfy an evidence need.
 
 ## Design
 See [`docs/DESIGN.md`](docs/DESIGN.md). Architecture reviewed externally (Daedalus, 2026-07-22).

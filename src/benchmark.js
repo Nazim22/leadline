@@ -233,6 +233,33 @@ function printRouteReport(label, result) {
   }
 }
 
+function writeJsonl(filePath, rows) {
+  const content = rows.length > 0
+    ? `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`
+    : '';
+  fs.writeFileSync(filePath, content);
+}
+
+function runRealCorpus(rootDir, planner) {
+  const manifestPath = path.join(rootDir, 'bench', 'real-benchmark-manifest.json');
+  if (!fs.existsSync(manifestPath)) return null;
+
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const labeledPath = path.join(rootDir, manifest.labeled_file);
+  if (!fs.existsSync(labeledPath)) throw new Error(`real benchmark labels missing: ${labeledPath}`);
+
+  const evaluation = evaluateCorpus(labeledPath, planner);
+  const report = buildRealReport(evaluation, manifest);
+  const resultsDir = path.join(rootDir, manifest.results_dir);
+  const prefix = manifest.artifact_prefix || 'dae';
+  fs.mkdirSync(resultsDir, { recursive: true });
+  writeJsonl(path.join(resultsDir, `${prefix}-predictions.jsonl`), evaluation.rows);
+  writeJsonl(path.join(resultsDir, `${prefix}-misses.jsonl`), report.diagnostics.misses);
+  fs.writeFileSync(path.join(resultsDir, `${prefix}-report.json`), `${JSON.stringify(report, null, 2)}\n`);
+
+  return { evaluation, report, results_dir: resultsDir };
+}
+
 function runBenchmark(rootDir) {
   const planner = createPlanner({
     tellsPath: path.join(rootDir, 'policy', 'tells.yaml'),
@@ -240,6 +267,7 @@ function runBenchmark(rootDir) {
   });
   const dev = evaluateCorpus(path.join(rootDir, 'bench', 'dev-corpus.jsonl'), planner);
   const evaluation = evaluateCorpus(path.join(rootDir, 'bench', 'eval-corpus.jsonl'), planner);
+  const real = runRealCorpus(rootDir, planner);
   const satisfactionRows = readJsonl(path.join(rootDir, 'bench', 'satisfaction-cases.jsonl')).map((row) => ({
     ...row,
     actual: evaluateSatisfaction(row.satisfaction, row.simulated_result),
@@ -248,6 +276,15 @@ function runBenchmark(rootDir) {
 
   printRouteReport('development corpus', dev);
   printRouteReport('frozen evaluation corpus', evaluation);
+  if (real) {
+    printRouteReport('real frozen evaluation corpus — Dae blind labels', real.evaluation);
+    console.log('first-route confusion pairs:');
+    if (real.report.diagnostics.first_route_confusions.length === 0) console.log('  none');
+    for (const pair of real.report.diagnostics.first_route_confusions) {
+      console.log(`  ${pair.gold} -> ${pair.predicted}: ${pair.count}`);
+    }
+    console.log(`real benchmark artifacts: ${real.results_dir}`);
+  }
   console.log(`\nSATISFACTION SIMULATION — SAMPLE SIZE: N=${satisfaction.sample_size}`);
   console.log(`exact outcomes: ${satisfaction.correct}/${satisfaction.sample_size}`);
   console.log(`gate-gaming bypasses: ${satisfaction.gate_gaming_bypasses}/${satisfaction.gate_gaming_cases}`);
@@ -258,7 +295,7 @@ function runBenchmark(rootDir) {
     console.log(`${id} satisfies need: ${row?.actual.satisfied ? 'YES' : 'NO'}`);
   }
 
-  return { dev, evaluation, satisfaction, satisfactionRows };
+  return { dev, evaluation, real, satisfaction, satisfactionRows };
 }
 
 module.exports = {
@@ -267,6 +304,7 @@ module.exports = {
   evaluateCorpus,
   readJsonl,
   runBenchmark,
+  runRealCorpus,
   scoreRoutes,
   scoreSatisfaction,
 };

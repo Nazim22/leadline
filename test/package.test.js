@@ -20,3 +20,13 @@ test('package root exposes the V0 measurement API', () => {
   assert.equal(typeof leadline.evaluateSatisfaction, 'function');
   assert.equal(typeof leadline.runBenchmark, 'function');
 });
+
+test('package root exposes the Phase A claim-enforcement API', () => {
+  const leadline = require('..');
+  for (const name of [
+    'appendFinalizationReport', 'appendReceipt', 'createClaimObligationDetector',
+    'createClaimSupportReceipt', 'evaluateFinalization', 'loadAuthorityPolicy', 'resolveAuthority',
+  ]) {
+    assert.equal(typeof leadline[name], 'function', `${name} must be exported`);
+  }
+});

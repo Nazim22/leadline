@@ -1,0 +1,29 @@
+# Leadline Phase A authority policy. Shadow/log-only: this policy cannot block.
+policy_version: authority-v0.1
+mode: shadow
+
+families:
+  historical:
+    authoritative_sources: [gbrain]
+    authority_tier: 2
+    freshness:
+      requirement: any
+      max_age_seconds: null
+  structural:
+    authoritative_sources: [graphify]
+    authority_tier: 1
+    freshness:
+      requirement: fresh
+      max_age_seconds: 86400
+  repository:
+    authoritative_sources: [read, grep, git]
+    authority_tier: 1
+    freshness:
+      requirement: fresh
+      max_age_seconds: 300
+  runtime:
+    authoritative_sources: [cli-probe]
+    authority_tier: 1
+    freshness:
+      requirement: fresh
+      max_age_seconds: 300

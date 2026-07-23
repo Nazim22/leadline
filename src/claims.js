@@ -53,17 +53,41 @@ const OBLIGATIONS = [
 function detectClaims(text) {
   if (typeof text !== 'string' || !text) return [];
   const found = [];
+  const seen = new Set();
   for (const o of OBLIGATIONS) {
-    for (const p of o.patterns) {
-      const m = p.exec(text);
-      if (m) {
-        const at = m.index;
-        found.push({ id: o.id, family: o.family, evidence: o.evidence, claim: text.slice(at, at + 90).replace(/\s+/g, ' ') });
-        break;
+    for (const pattern of o.patterns) {
+      const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+      const matcher = new RegExp(pattern.source, flags);
+      for (const match of text.matchAll(matcher)) {
+        const at = match.index;
+        const key = `${o.id}:${at}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push({
+          at,
+          end: at + match[0].length,
+          obligationId: o.id,
+          value: {
+            id: o.id,
+            family: o.family,
+            evidence: o.evidence,
+            claim: text.slice(at, at + 90).replace(/\s+/g, ' '),
+            start: at,
+            end: at + match[0].length,
+          },
+        });
       }
     }
   }
-  return found;
+  const ordered = found.sort((left, right) => left.at - right.at || right.end - left.end);
+  const accepted = [];
+  for (const entry of ordered) {
+    const overlaps = accepted.some((prior) => (
+      prior.obligationId === entry.obligationId && entry.at < prior.end && entry.end > prior.at
+    ));
+    if (!overlaps) accepted.push(entry);
+  }
+  return accepted.map((entry) => entry.value);
 }
 
 module.exports = { detectClaims, OBLIGATIONS };

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "corpus_commit": "f32da3c8c494dafebc3a91a5c1ec3422e8958238",
+  "router_commit": "3b1977ed5b280dcc2daa60963eb0e6b50f474899",
+  "rubric_version": "real-v1",
+  "rubric_commit": "864672ac6e9b930c6783e7445e42db3468f4ebb3",
+  "labeler": "dae",
+  "labeled_file": "bench/real-prompts-dae-labeled.jsonl",
+  "adjudication_file": "bench/real-prompts-dae-adjudication.jsonl",
+  "results_dir": "bench/results/real-v1",
+  "artifact_prefix": "dae"
+}

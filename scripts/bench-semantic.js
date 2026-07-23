@@ -59,7 +59,7 @@ async function predictAll(planner, rows, semantic) {
   const grid = [];
   for (const threshold of [0.5, 0.55, 0.6, 0.65, 0.7]) {
     for (const margin of [0, 0.02, 0.05]) {
-      const sc = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), threshold, margin, cacheDir: path.join(ROOT, 'bench', '.cache') });
+      const sc = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), floors: threshold, margins: margin, cacheDir: path.join(ROOT, 'bench', '.cache') });
       const p = createPlanner({ tellsPath: path.join(ROOT, 'policy', 'tells.yaml'), routesPath: path.join(ROOT, 'policy', 'routes.yaml'), semanticClassifier: sc });
       const preds = await predictAll(p, dev, true);
       const m = score(dev, preds);
@@ -72,7 +72,7 @@ async function predictAll(planner, rows, semantic) {
 
   // --- EVAL once on frozen real corpus ---
   const tellsOnly = createPlanner({ tellsPath: path.join(ROOT, 'policy', 'tells.yaml'), routesPath: path.join(ROOT, 'policy', 'routes.yaml') });
-  const scReal = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), threshold: best.threshold, margin: best.margin, cacheDir: path.join(ROOT, 'bench', '.cache') });
+  const scReal = await createSemanticClassifier({ exemplarsPath: path.join(ROOT, 'policy', 'exemplars.yaml'), floors: best.threshold, margins: best.margin, cacheDir: path.join(ROOT, 'bench', '.cache') });
   const withSemantic = createPlanner({ tellsPath: path.join(ROOT, 'policy', 'tells.yaml'), routesPath: path.join(ROOT, 'policy', 'routes.yaml'), semanticClassifier: scReal });
 
   const base = score(real, await predictAll(tellsOnly, real, false));

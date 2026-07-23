@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadAuthorityPolicy, resolveAuthority } = require('../src/authority');
 const { appendFinalizationReport, evaluateFinalization } = require('../src/finalization');
-const { createClaimSupportReceipt } = require('../src/receipts');
+const { createEvidenceContactReceipt } = require('../src/evidence');
 
 const policyPath = path.join(__dirname, '..', 'policy', 'authority.yaml');
 const obligation = {
@@ -17,6 +17,13 @@ const detectorResult = {
   status: 'ok', candidate_count: 1, obligations: [obligation], rejected: [],
   detector_fingerprint: 'claim-detector-abc', model_identity: 'ollama:qwen@digest',
 };
+
+function evidence({ provider = 'cli-probe', value = 'api is live', observed_at, name = 'curl', args = { url: '/health' }, now }) {
+  return createEvidenceContactReceipt({
+    session_id: 'sess-1', turn_id: 'turn-1', tool_call_id: `tc-${observed_at}`,
+    toolCall: { provider, name, args }, result: { value, observed_at }, now,
+  });
+}
 
 test('authority policy is strict, shadow-only, and resolves allowed sources', () => {
   const policy = loadAuthorityPolicy(policyPath);
@@ -29,58 +36,79 @@ test('authority policy is strict, shadow-only, and resolves allowed sources', ()
 
 test('shadow finalization logs unsupported claims and never blocks', () => {
   const report = evaluateFinalization({
-    completionId: 'turn-1', detectorResult, receipts: [], policy: loadAuthorityPolicy(policyPath),
+    completionId: 'turn-1', detectorResult, evidenceReceipts: [], policy: loadAuthorityPolicy(policyPath),
     now: new Date('2026-07-23T05:10:00.000Z'),
   });
   assert.equal(report.mode, 'shadow');
   assert.equal(report.action, 'log_only');
   assert.equal(report.summary.unsupported, 1);
   assert.equal(report.summary.supported, 0);
+  assert.equal(report.summary.ambiguous, 0);
   assert.equal(report.obligations[0].status, 'unsupported');
-  assert.equal(report.obligations[0].reason, 'no_satisfying_receipt');
+  assert.equal(report.obligations[0].match_method, 'none');
+  assert.equal(report.obligations[0].fresh_at_finalization, false);
+  assert.deepEqual(report.obligations[0].matched_evidence_ids, []);
+  assert.equal(report.obligations[0].override_provenance, null);
   assert.equal('block' in report, false);
 });
 
-test('shadow finalization matches a fresh satisfying receipt by claim linkage', () => {
+test('shadow finalization links a fresh authoritative contact whose result references the claim entity', () => {
   const policy = loadAuthorityPolicy(policyPath);
-  const authority = resolveAuthority(policy, 'runtime', 'cli-probe');
-  const receipt = createClaimSupportReceipt({
-    obligation, authority,
-    toolCall: { provider: 'cli-probe', name: 'curl', args: { url: '/health' } },
-    result: { value: 'ok', observed_at: '2026-07-23T05:08:00.000Z', entity_matched: true, matched_terms: ['api'] },
-    now: new Date('2026-07-23T05:08:01.000Z'),
-  });
+  const contact = evidence({ observed_at: '2026-07-23T05:08:00.000Z', now: new Date('2026-07-23T05:08:01.000Z') });
   const report = evaluateFinalization({
-    completionId: 'turn-1', detectorResult, receipts: [receipt], policy,
+    completionId: 'turn-1', detectorResult, evidenceReceipts: [contact], policy,
     now: new Date('2026-07-23T05:10:00.000Z'),
   });
   assert.equal(report.summary.supported, 1);
   assert.equal(report.summary.unsupported, 0);
   assert.equal(report.obligations[0].status, 'supported');
-  assert.deepEqual(report.obligations[0].matched_receipt_ids, [receipt.receipt_id]);
+  assert.equal(report.obligations[0].match_method, 'entity_in_references');
+  assert.equal(report.obligations[0].fresh_at_finalization, true);
+  assert.deepEqual(report.obligations[0].matched_evidence_ids, [contact.evidence_id]);
 });
 
-test('shadow finalization rejects stale-at-stop and unrelated receipts', () => {
+test('a stale-only authoritative contact is ambiguous, and non-authoritative / off-entity contacts are ignored', () => {
   const policy = loadAuthorityPolicy(policyPath);
-  const authority = resolveAuthority(policy, 'runtime', 'cli-probe');
-  const old = createClaimSupportReceipt({
-    obligation, authority,
-    toolCall: { provider: 'cli-probe', name: 'curl', args: {} },
-    result: { value: 'ok', observed_at: '2026-07-23T05:00:00.000Z', entity_matched: true },
-    now: new Date('2026-07-23T05:00:01.000Z'),
-  });
-  const unrelated = createClaimSupportReceipt({
-    obligation: { ...obligation, claim_id: 'claim-other' }, authority,
-    toolCall: { provider: 'cli-probe', name: 'curl', args: {} },
-    result: { value: 'ok', observed_at: '2026-07-23T05:00:00.000Z', entity_matched: true },
-    now: new Date('2026-07-23T05:00:01.000Z'),
-  });
+  const stale = evidence({ observed_at: '2026-07-23T05:00:00.000Z', now: new Date('2026-07-23T05:00:01.000Z') });
+  const wrongProvider = evidence({ provider: 'grep', name: 'read', observed_at: '2026-07-23T05:09:00.000Z', now: new Date('2026-07-23T05:09:01.000Z') });
+  const offEntity = evidence({ value: 'database is live', observed_at: '2026-07-23T05:09:00.000Z', now: new Date('2026-07-23T05:09:01.000Z') });
   const report = evaluateFinalization({
-    completionId: 'turn-1', detectorResult, receipts: [old, unrelated], policy,
+    completionId: 'turn-1', detectorResult, evidenceReceipts: [stale, wrongProvider, offEntity], policy,
     now: new Date('2026-07-23T05:10:00.000Z'),
   });
-  assert.equal(report.summary.unsupported, 1);
-  assert.equal(report.obligations[0].reason, 'receipt_stale_at_finalization');
+  assert.equal(report.summary.supported, 0);
+  assert.equal(report.summary.unsupported, 0);
+  assert.equal(report.summary.ambiguous, 1);
+  assert.equal(report.obligations[0].status, 'ambiguous');
+  assert.equal(report.obligations[0].match_method, 'entity_in_references');
+  assert.equal(report.obligations[0].fresh_at_finalization, false);
+  assert.deepEqual(report.obligations[0].matched_evidence_ids, []);
+});
+
+test('a future observed_at is not fresh at finalization (regression: future timestamps must not count as fresh)', () => {
+  const policy = loadAuthorityPolicy(policyPath);
+  const future = evidence({ observed_at: '2026-07-23T06:10:00.000Z', now: new Date('2026-07-23T05:10:00.000Z') });
+  const report = evaluateFinalization({
+    completionId: 'turn-1', detectorResult, evidenceReceipts: [future], policy,
+    now: new Date('2026-07-23T05:10:00.000Z'),
+  });
+  assert.equal(report.obligations[0].fresh_at_finalization, false);
+  assert.equal(report.obligations[0].status, 'ambiguous');
+  assert.equal(report.summary.supported, 0);
+});
+
+test('an override forces supported with logged provenance even when no contact satisfies', () => {
+  const policy = loadAuthorityPolicy(policyPath);
+  const provenance = { actor: 'nazz', reason: 'manually verified out-of-band', at: '2026-07-23T05:09:30.000Z' };
+  const report = evaluateFinalization({
+    completionId: 'turn-1', detectorResult, evidenceReceipts: [], policy,
+    overrides: { 'claim-abc123': provenance }, now: new Date('2026-07-23T05:10:00.000Z'),
+  });
+  assert.equal(report.summary.supported, 1);
+  assert.equal(report.summary.unsupported, 0);
+  assert.equal(report.obligations[0].status, 'supported');
+  assert.equal(report.obligations[0].match_method, 'override');
+  assert.deepEqual(report.obligations[0].override_provenance, provenance);
 });
 
 test('detector operational failure is logged as degraded, not an unsupported claim', () => {
@@ -90,7 +118,7 @@ test('detector operational failure is logged as degraded, not an unsupported cla
       status: 'unavailable', failure: 'llm_request_failed', candidate_count: 1,
       obligations: [], rejected: [], detector_fingerprint: 'claim-detector-abc', model_identity: 'ollama:qwen@digest',
     },
-    receipts: [], policy: loadAuthorityPolicy(policyPath), now: new Date('2026-07-23T05:10:00.000Z'),
+    evidenceReceipts: [], policy: loadAuthorityPolicy(policyPath), now: new Date('2026-07-23T05:10:00.000Z'),
   });
   assert.equal(report.detector_status, 'unavailable');
   assert.equal(report.summary.unsupported, 0);
@@ -100,7 +128,7 @@ test('detector operational failure is logged as degraded, not an unsupported cla
 
 test('finalization reports append without truncation', () => {
   const report = evaluateFinalization({
-    completionId: 'turn-1', detectorResult, receipts: [], policy: loadAuthorityPolicy(policyPath),
+    completionId: 'turn-1', detectorResult, evidenceReceipts: [], policy: loadAuthorityPolicy(policyPath),
     now: new Date('2026-07-23T05:10:00.000Z'),
   });
   const dir = fs.mkdtempSync('/tmp/leadline-finalization-');

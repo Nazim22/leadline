@@ -68,6 +68,21 @@ test('receipt fails closed for wrong source, empty, irrelevant, stale, and error
   }
 });
 
+test('a future observed_at is not fresh and never satisfies (age is not clamped for the freshness decision)', () => {
+  const receipt = createClaimSupportReceipt({
+    obligation,
+    authority,
+    toolCall: { provider: 'cli-probe', name: 'curl', args: {} },
+    result: { value: 'ok', observed_at: '2026-07-23T06:10:00.000Z', entity_matched: true },
+    now: new Date('2026-07-23T05:10:00.000Z'),
+  });
+  assert.equal(receipt.freshness.ok, false);
+  assert.equal(receipt.freshness.age_seconds, 0);
+  assert.equal(receipt.failure, 'stale');
+  assert.equal(receipt.policy_decision, 'unsatisfied');
+  assert.equal(validate(receipt), true, JSON.stringify(validate.errors));
+});
+
 test('receipt hashing is deterministic across object key order', () => {
   const base = {
     obligation,

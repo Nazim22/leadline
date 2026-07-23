@@ -83,6 +83,7 @@ function validateReceipt(receipt) {
   return receipt;
 }
 
+// ponytail: superseded by the evidence-contact→claim-support link in finalization.js; retained until receipts.test.js is migrated (stage 2). Dead in the new path.
 function createClaimSupportReceipt({ obligation, authority, toolCall, result, now = new Date(), override = null } = {}) {
   if (!obligation || typeof obligation.claim_id !== 'string' || !FAMILIES.has(obligation.family)
       || typeof obligation.entity !== 'string' || obligation.entity.length === 0) {
@@ -102,11 +103,13 @@ function createClaimSupportReceipt({ obligation, authority, toolCall, result, no
   if (!(now instanceof Date) || !Number.isFinite(now.valueOf())) throw new TypeError('now must be a valid Date');
 
   const observed = result.observed_at == null ? null : parseDate(result.observed_at, 'result.observed_at');
-  const ageSeconds = observed ? Math.max(0, (now.valueOf() - observed.valueOf()) / 1000) : null;
+  // raw age may be negative for a future observed_at; record clamped (schema requires >= 0) but gate freshness on the raw sign
+  const rawAgeSeconds = observed ? (now.valueOf() - observed.valueOf()) / 1000 : null;
+  const ageSeconds = rawAgeSeconds == null ? null : Math.max(0, rawAgeSeconds);
   const maxAge = authority.freshness.max_age_seconds == null ? null : authority.freshness.max_age_seconds;
   if (maxAge != null && (!Number.isInteger(maxAge) || maxAge < 0)) throw new TypeError('freshness max_age_seconds is invalid');
   const freshnessOk = authority.freshness.requirement === 'any'
-    || (observed != null && maxAge != null && ageSeconds <= maxAge);
+    || (observed != null && maxAge != null && rawAgeSeconds >= 0 && rawAgeSeconds <= maxAge);
   const resultNonempty = result.error == null && nonempty(result.value);
   const entityMatched = result.entity_matched === true;
   const matchedTerms = Array.isArray(result.matched_terms)
@@ -159,4 +162,4 @@ function appendReceipt(file, receipt) {
   fs.appendFileSync(file, `${JSON.stringify(receipt)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'a' });
 }
 
-module.exports = { appendReceipt, canonicalize, createClaimSupportReceipt, hashValue, validateReceipt };
+module.exports = { appendReceipt, canonicalize, createClaimSupportReceipt, hashValue, nonempty, parseDate, validateReceipt };

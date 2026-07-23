@@ -3,68 +3,82 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { canonicalize, validateReceipt } = require('./receipts');
+const { canonicalize } = require('./receipts');
+const { validateEvidenceReceipt } = require('./evidence');
 
 function normalize(value) {
   return String(value).trim().toLocaleLowerCase();
 }
 
+// Evidence-contact receipts carry observed_at at the top level (not under freshness).
+// A future observed_at (raw age < 0) is NOT fresh.
 function receiptFreshAtFinalization(receipt, rule, now) {
   if (rule.freshness.requirement === 'any') return true;
-  if (receipt.freshness.observed_at == null) return false;
-  const observed = Date.parse(receipt.freshness.observed_at);
-  return Number.isFinite(observed)
-    && Math.max(0, (now.valueOf() - observed) / 1000) <= rule.freshness.max_age_seconds;
+  if (receipt.observed_at == null) return false;
+  const observed = Date.parse(receipt.observed_at);
+  if (!Number.isFinite(observed)) return false;
+  const age = (now.valueOf() - observed) / 1000;
+  return age >= 0 && age <= rule.freshness.max_age_seconds;
 }
 
-function evaluateFinalization({ completionId, detectorResult, receipts, policy, now = new Date() } = {}) {
+function evaluateFinalization({ completionId, detectorResult, evidenceReceipts, policy, overrides = {}, now = new Date() } = {}) {
   if (typeof completionId !== 'string' || completionId.length === 0) throw new TypeError('completionId must be non-empty');
   if (!detectorResult || typeof detectorResult.status !== 'string' || !Array.isArray(detectorResult.obligations)) {
     throw new TypeError('detectorResult is invalid');
   }
-  if (!Array.isArray(receipts)) throw new TypeError('receipts must be an array');
+  if (!Array.isArray(evidenceReceipts)) throw new TypeError('evidenceReceipts must be an array');
   if (!policy || policy.mode !== 'shadow' || !policy.families) throw new TypeError('finalization requires a shadow authority policy');
+  if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) throw new TypeError('overrides must be an object map');
   if (!(now instanceof Date) || !Number.isFinite(now.valueOf())) throw new TypeError('now must be a valid Date');
-  receipts.forEach(validateReceipt);
+  evidenceReceipts.forEach(validateEvidenceReceipt);
 
   const evaluations = [];
   if (detectorResult.status === 'ok') {
     for (const obligation of detectorResult.obligations) {
       const rule = policy.families[obligation.family];
       if (!rule) throw new TypeError(`unknown obligation family: ${obligation.family}`);
-      const linked = receipts.filter((receipt) => (
-        receipt.claim_id === obligation.claim_id
-        && receipt.family === obligation.family
-        && normalize(receipt.entity) === normalize(obligation.entity)
-        && rule.authoritative_sources.includes(receipt.tool.provider)
-      ));
-      const satisfying = linked.filter((receipt) => (
-        ['satisfied', 'override'].includes(receipt.policy_decision)
+      const entity = normalize(obligation.entity);
+      // Deterministic relevance: an authoritative provider whose contact result references the claim entity.
+      const candidateContacts = evidenceReceipts.filter((receipt) => (
+        rule.authoritative_sources.includes(receipt.provider)
+        && receipt.references.includes(entity)
         && receipt.failure === 'none'
-        && receiptFreshAtFinalization(receipt, rule, now)
       ));
-      let reason = 'no_satisfying_receipt';
-      if (satisfying.length > 0) reason = 'satisfying_receipt';
-      else if (linked.some((receipt) => (
-        receipt.policy_decision === 'satisfied'
-        && receipt.failure === 'none'
-        && !receiptFreshAtFinalization(receipt, rule, now)
-      ))) reason = 'receipt_stale_at_finalization';
-      else if (linked.length > 0) reason = 'receipt_unsatisfied';
+      const freshContacts = candidateContacts.filter((receipt) => receiptFreshAtFinalization(receipt, rule, now));
+      const override = Object.prototype.hasOwnProperty.call(overrides, obligation.claim_id)
+        ? overrides[obligation.claim_id] : null;
+
+      let status;
+      let matchMethod;
+      let overrideProvenance = null;
+      if (override != null) {
+        status = 'supported';
+        matchMethod = 'override';
+        overrideProvenance = override;
+      } else if (candidateContacts.length === 0) {
+        status = 'unsupported';
+        matchMethod = 'none';
+      } else {
+        matchMethod = 'entity_in_references';
+        status = freshContacts.length > 0 ? 'supported' : 'ambiguous';
+      }
       evaluations.push({
         claim_id: obligation.claim_id,
+        claim: obligation.claim,
         family: obligation.family,
         entity: obligation.entity,
-        claim: obligation.claim,
-        status: satisfying.length > 0 ? 'supported' : 'unsupported',
-        reason,
-        matched_receipt_ids: satisfying.map((receipt) => receipt.receipt_id),
+        matched_evidence_ids: freshContacts.map((receipt) => receipt.evidence_id),
+        match_method: matchMethod,
+        fresh_at_finalization: freshContacts.length > 0,
+        status,
+        override_provenance: overrideProvenance,
       });
     }
   }
 
   const supported = evaluations.filter((item) => item.status === 'supported').length;
   const unsupported = evaluations.filter((item) => item.status === 'unsupported').length;
+  const ambiguous = evaluations.filter((item) => item.status === 'ambiguous').length;
   const notEvaluated = detectorResult.status === 'ok' ? 0 : detectorResult.candidate_count || 0;
   const core = {
     schema_version: '1.0',
@@ -77,7 +91,7 @@ function evaluateFinalization({ completionId, detectorResult, receipts, policy, 
     model_identity: detectorResult.model_identity,
     evaluated_at: now.toISOString(),
     obligations: evaluations,
-    summary: { total: evaluations.length, supported, unsupported, not_evaluated: notEvaluated },
+    summary: { total: evaluations.length, supported, unsupported, ambiguous, not_evaluated: notEvaluated },
   };
   return {
     ...core,

@@ -75,7 +75,10 @@ function buildRouteDiagnostics(rows) {
 function scoreRoutes(rows) {
   let firstRouteCorrect = 0;
   let routedCases = 0;
+  let routedFullPlanCorrect = 0;
   let fullPlanCorrect = 0;
+  let goldAbstainCases = 0;
+  let correctAbstentions = 0;
   let abstained = 0;
   let multiIntentCases = 0;
   let multiIntentFamiliesRecalled = 0;
@@ -89,8 +92,15 @@ function scoreRoutes(rows) {
     if (gold.length > 0) {
       routedCases += 1;
       if (goldFirst === predictedFirst) firstRouteCorrect += 1;
+    } else {
+      goldAbstainCases += 1;
+      if (predicted.length === 0) correctAbstentions += 1;
     }
-    if (arraysEqual(gold, predicted) && (gold.length === 0 || row.predicted_complete !== false)) fullPlanCorrect += 1;
+    const exactPlan = arraysEqual(gold, predicted) && (gold.length === 0 || row.predicted_complete !== false);
+    if (exactPlan) {
+      fullPlanCorrect += 1;
+      if (gold.length > 0) routedFullPlanCorrect += 1;
+    }
     if (predicted.length === 0) abstained += 1;
     if (gold.length > 1) {
       multiIntentCases += 1;
@@ -103,7 +113,10 @@ function scoreRoutes(rows) {
     sample_size: rows.length,
     routed_cases: routedCases,
     first_route_correct: firstRouteCorrect,
+    routed_full_plan_correct: routedFullPlanCorrect,
     full_plan_correct: fullPlanCorrect,
+    gold_abstain_cases: goldAbstainCases,
+    correct_abstentions: correctAbstentions,
     abstained,
     multi_intent_cases: multiIntentCases,
     multi_intent_families_recalled: multiIntentFamiliesRecalled,
@@ -174,6 +187,16 @@ function buildRealReport(evaluation, metadata) {
         correct: metric.full_plan_correct,
         total: metric.sample_size,
         rate: ratio(metric.full_plan_correct, metric.sample_size),
+      },
+      routed_full_plan_exact_match: {
+        correct: metric.routed_full_plan_correct,
+        total: metric.routed_cases,
+        rate: ratio(metric.routed_full_plan_correct, metric.routed_cases),
+      },
+      gold_abstention_recall: {
+        correct: metric.correct_abstentions,
+        total: metric.gold_abstain_cases,
+        rate: ratio(metric.correct_abstentions, metric.gold_abstain_cases),
       },
       abstention_rate: {
         abstained: metric.abstained,

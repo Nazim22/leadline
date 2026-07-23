@@ -96,6 +96,8 @@ test('builds a denominator-explicit real-corpus report without latency noise', (
 
   assert.deepEqual(report.metrics.first_route_accuracy, { correct: 1, total: 2, rate: 0.5 });
   assert.deepEqual(report.metrics.full_plan_exact_match, { correct: 2, total: 3, rate: 2 / 3 });
+  assert.deepEqual(report.metrics.routed_full_plan_exact_match, { correct: 1, total: 2, rate: 0.5 });
+  assert.deepEqual(report.metrics.gold_abstention_recall, { correct: 1, total: 1, rate: 1 });
   assert.deepEqual(report.metrics.multi_intent_recall, { recalled: 0, total: 0, rate: null, cases: 0 });
   assert.equal(Object.hasOwn(report.metrics, 'latency_ms'), false);
   assert.deepEqual(report.annotation_distribution.confidence, { high: 2, medium: 1 });

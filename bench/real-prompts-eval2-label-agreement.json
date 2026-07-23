@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "rows": 200,
+  "dae_lane_sha256": "21691ed959596c07199dcc132a5ca1a396f2e906709b7ddbf21be3e3d3462cf8",
+  "pingu_lane_sha256": "ff3b8fdd55c22eb5ae996d7d9455c216b3c3272b34b736079a1b097bae4cc64a",
+  "route_exact_agreement_count": 158,
+  "route_exact_agreement_rate": 0.79,
+  "route_disagreement_count": 42,
+  "all_annotation_exact_count": 37,
+  "any_annotation_disagreement_count": 163,
+  "binary_routed_kappa": 0.6666666666666666,
+  "first_family_kappa": 0.6232946446752188,
+  "confidence_agreement_count": 112,
+  "context_agreement_count": 85,
+  "disagreement_sha256": "c82a1f9d198b14d4da241990785e126c8f6e11495654b75e9ca4ce0f6da77e5b",
+  "gate_opened": false,
+  "status": "adjudicated-gold-sealed-before-gate",
+  "raw_eval2_sha256": "12ed3eab15dbefa1a47b35965a2305da478d486ba819a42ddb162f409fe00471",
+  "adjudicated_gold_sha256": "d6ce98a402a662efd3c7e5a4c458f82489e0add7e3ae30885e679df4eb4af367",
+  "adjudication_sha256": "499b20403aa716f8e70bbf1f4dcaa254ae2590ac959194b896a47a05a6de7320",
+  "primary_exclusion": [
+    "eval2-000112"
+  ],
+  "primary_n": 199,
+  "inclusive_n": 200
+}

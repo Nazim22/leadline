@@ -7,7 +7,7 @@
   "required": ["schema_version", "protocol_version", "protocol_sha256", "rubric_version", "rubric_sha256", "seed", "identities", "runtime", "inputs", "schema_hashes", "status", "invalid_response_attempts", "operational_failure_attempts", "operational_failure_requests", "rows"],
   "properties": {
     "schema_version": { "const": 2 },
-    "protocol_version": { "const": "exam-v2.1" },
+    "protocol_version": { "const": "exam-v2.2" },
     "protocol_sha256": { "$ref": "#/$defs/sha256" },
     "rubric_version": { "const": "detector-gold-v0.2" },
     "rubric_sha256": { "$ref": "#/$defs/sha256" },

@@ -76,10 +76,10 @@ const CLAIM_SCHEMA = Object.freeze({
   required: ['span_exact_text', 'family', 'entity'],
   properties: {
     span_exact_text: { type: 'string', minLength: 1 },
-    family: { enum: FAMILIES },
+    family: { type: 'string', enum: FAMILIES },
     entity: { type: 'string', minLength: 1 },
     confidence: { type: 'number', minimum: 0, maximum: 1 },
-    relevant_evidence_contact_visible: { enum: ['yes', 'no', 'uncertain'] },
+    relevant_evidence_contact_visible: { type: 'string', enum: ['yes', 'no', 'uncertain'] },
   },
 });
 const MODEL_RESPONSE_SCHEMA = Object.freeze({
@@ -87,7 +87,7 @@ const MODEL_RESPONSE_SCHEMA = Object.freeze({
   additionalProperties: false,
   required: ['schema_version', 'claims'],
   properties: {
-    schema_version: { const: 2 },
+    schema_version: { type: 'integer', const: 2, minimum: 2, maximum: 2 },
     claims: { type: 'array', items: CLAIM_SCHEMA },
   },
 });

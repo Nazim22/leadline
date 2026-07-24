@@ -31,7 +31,7 @@ const LANE_MODELS = Object.freeze({
 });
 const FAMILIES = Object.freeze(['historical', 'structural', 'repository', 'runtime']);
 const VOTES = Object.freeze(['accept', 'reject', 'abstain', 'operational_failure']);
-const PROTOCOL_VERSION = 'exam-v2.1';
+const PROTOCOL_VERSION = 'exam-v2.2';
 const MAX_ATTEMPTS = 2;
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -161,15 +161,15 @@ function finalizeCandidate(votes) {
 const VOTE_RESPONSE_SCHEMA = Object.freeze({
   type: 'object', additionalProperties: false, required: ['schema_version', 'candidate_id', 'decision'],
   properties: {
-    schema_version: { const: 2 },
+    schema_version: { type: 'integer', const: 2, minimum: 2, maximum: 2 },
     candidate_id: { type: 'string', pattern: '^candidate-[a-f0-9]{24}$' },
-    decision: { enum: ['accept', 'reject', 'abstain'] },
+    decision: { type: 'string', enum: ['accept', 'reject', 'abstain'] },
   },
 });
 const SWEEP_RESPONSE_SCHEMA = Object.freeze({
   type: 'object', additionalProperties: false, required: ['schema_version', 'missing_claims'],
   properties: {
-    schema_version: { const: 2 },
+    schema_version: { type: 'integer', const: 2, minimum: 2, maximum: 2 },
     missing_claims: { type: 'array', items: MODEL_RESPONSE_SCHEMA.properties.claims.items },
   },
 });

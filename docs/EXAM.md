@@ -21,7 +21,9 @@ Build-side conditions 1–3 are enforced by code and tests:
 
 Launch condition 4 is intentionally operator-executed because OpenRouter key custody remains on LXC 122. **Before any paid lane run, Pingu runs the real Kimi synthetic preflight from 122 as execution step zero against the merged, operator-locked tree.** LXC 134 never receives the credential. A failed preflight stops the exam; it is not replaced by a mocked or inferred success.
 
-The first real preflight stopped the exam before corpus extraction because Kimi's sole endpoint does not support `temperature` or `seed`, and OpenRouter returns its generic model slug rather than the dated endpoint name. Protocol `exam-v2.1` incorporates those observed constraints before any slice was drawn or scored.
+The first real preflight stopped the exam before corpus extraction because Kimi's sole endpoint does not support `temperature` or `seed`, and OpenRouter returns its generic model slug rather than the dated endpoint name. Protocol `exam-v2.1` incorporated those observed constraints before any slice was drawn or scored.
+
+The second preflight also stopped before corpus extraction. Moonshot rejected JSON Schema properties without explicit `type`, while Google AI Studio ignored `const` for `schema_version`. Protocol `exam-v2.2` explicitly types every outbound response-schema property and constrains `schema_version` redundantly as integer `const:2`, `minimum:2`, and `maximum:2`. The persisted exam artifact schemas remain the strict Ajv contracts; these redundant outbound constraints are provider-compatibility guards and do not change response semantics.
 
 ## 1. Blind context
 

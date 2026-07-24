@@ -17,6 +17,7 @@ const {
   ADJUDICATOR_MODEL,
   PROTOCOL_VERSION,
   REQUEST_PROFILES,
+  SWEEP_RESPONSE_SCHEMA,
   UNION_SEED,
   VOTE_RESPONSE_SCHEMA,
   assertPathSeparation,
@@ -89,7 +90,7 @@ test('v2 rubric hash freezes exactly five synthetic anchors and every launch des
     model_identity: 'google/gemini-3.6-flash',
     request_profile: 'deterministic-v1',
   });
-  assert.equal(PROTOCOL_VERSION, 'exam-v2.1');
+  assert.equal(PROTOCOL_VERSION, 'exam-v2.2');
   assert.deepEqual(REQUEST_PROFILES, {
     'deterministic-v1': { temperature: 0, seed: 0 },
     'provider-default-v1': {},
@@ -101,6 +102,26 @@ test('v2 rubric hash freezes exactly five synthetic anchors and every launch des
   });
   assert.equal(typeof UNION_SEED, 'string');
   assert.equal(MODEL_RESPONSE_SCHEMA.properties.schema_version.const, 2);
+});
+
+test('all outbound response-schema properties are explicitly typed with redundant schema-version enforcement', () => {
+  function assertExplicitPropertyTypes(schema, path = '$') {
+    for (const [name, property] of Object.entries(schema.properties || {})) {
+      assert.equal(Object.hasOwn(property, 'type'), true, `${path}.properties.${name} must declare type`);
+      assertExplicitPropertyTypes(property, `${path}.properties.${name}`);
+    }
+    if (schema.items) assertExplicitPropertyTypes(schema.items, `${path}.items`);
+  }
+
+  for (const schema of [MODEL_RESPONSE_SCHEMA, VOTE_RESPONSE_SCHEMA, SWEEP_RESPONSE_SCHEMA]) {
+    assertExplicitPropertyTypes(schema);
+    assert.deepEqual(schema.properties.schema_version, {
+      type: 'integer', const: 2, minimum: 2, maximum: 2,
+    });
+  }
+  assert.equal(MODEL_RESPONSE_SCHEMA.properties.claims.items.properties.family.type, 'string');
+  assert.equal(MODEL_RESPONSE_SCHEMA.properties.claims.items.properties.relevant_evidence_contact_visible.type, 'string');
+  assert.equal(VOTE_RESPONSE_SCHEMA.properties.decision.type, 'string');
 });
 
 test('lane requests are concurrent and enforce strict schema, parameters, no fallback, and response identity', async () => {

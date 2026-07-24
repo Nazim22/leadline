@@ -80,11 +80,11 @@ function boundInputBytes() {
 
 function config() {
   return {
-    schema_version: 1,
+    schema_version: 2,
     base_url: 'https://openrouter.ai/api/v1',
     labelers: [
-      { id: 'lane-a', model_identity: 'deepseek/deepseek-v4-pro' },
-      { id: 'lane-b', model_identity: 'x-ai/grok-4.5' },
+      { id: 'lane-a', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
+      { id: 'lane-b', request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
     ],
   };
 }
@@ -92,7 +92,7 @@ function config() {
 function validContent(completionId) {
   if (completionId.endsWith('1'.repeat(24))) {
     return JSON.stringify({
-      schema_version: 1,
+      schema_version: 2,
       claims: [{
         span_exact_text: 'The API is live.',
         family: 'runtime',
@@ -102,7 +102,7 @@ function validContent(completionId) {
       }],
     });
   }
-  return JSON.stringify({ schema_version: 1, claims: [] });
+  return JSON.stringify({ schema_version: 2, claims: [] });
 }
 
 function response(model, content, status = 200) {
@@ -124,9 +124,10 @@ function deterministicFetch({ invalidateFirst = false, alwaysInvalid = false } =
     const key = `${body.model}:${payload.completion_id}`;
     attempts.set(key, (attempts.get(key) || 0) + 1);
     calls.push({ url, options, body, payload });
-    const invalid = alwaysInvalid || (invalidateFirst && key.startsWith('deepseek/') && attempts.get(key) === 1);
-    return response(body.model, invalid
-      ? '{"schema_version":1,"claims":[],"extra":true}'
+    const invalid = alwaysInvalid || (invalidateFirst && key.startsWith('x-ai/') && attempts.get(key) === 1);
+    const identity = body.model === 'moonshotai/kimi-k3' ? 'kimi-k3-20260715' : body.model;
+    return response(identity, invalid
+      ? '{"schema_version":2,"claims":[],"extra":true}'
       : validContent(payload.completion_id));
   };
   return { calls, fetchFn };
@@ -137,8 +138,8 @@ test('endpoint and context provenance reject bypasses before labeling', () => {
   assert.throws(() => validateConfig({
     ...config(),
     labelers: [
-      { id: 'lane-a', model_identity: 'x-ai/grok-4.5' },
-      { id: 'lane-b', model_identity: 'deepseek/deepseek-v4-pro' },
+      { id: 'lane-a', request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
+      { id: 'lane-b', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
     ],
   }), /lane-a|locked|mapping/u);
   const copied = contextRows();
@@ -172,8 +173,11 @@ test('dual labelers receive only blind context and completion data in determinis
   });
 
   assert.deepEqual(first, second);
-  assert.deepEqual(LABELER_MODELS, ['deepseek/deepseek-v4-pro', 'x-ai/grok-4.5']);
-  assert.equal(RUBRIC_VERSION, 'detector-gold-v0.1');
+  assert.deepEqual(LABELER_MODELS, [
+    { request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
+    { request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
+  ]);
+  assert.equal(RUBRIC_VERSION, 'detector-gold-v0.2');
   assert.equal(first.lanes.length, 2);
   assert.deepEqual(first.lanes.map((lane) => lane.rows.length), [2, 2]);
   assert.equal(first.lanes[0].rows[0].rubric_sha256, RUBRIC_SHA256);

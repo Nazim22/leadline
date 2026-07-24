@@ -12,11 +12,11 @@ const Ajv2020 = require('ajv/dist/2020');
 let privateWriteCounter = 0;
 let validatedRuntime = null;
 let validatedModules = null;
-const RUBRIC_VERSION = 'detector-gold-v0.1';
-const RUBRIC_SHA256 = 'bc18b4a30784d8f35c4dbe552657f92a63268999eb8eac99af349e78a25a300e';
+const RUBRIC_VERSION = 'detector-gold-v0.2';
+const RUBRIC_SHA256 = '09039a47d099d6f4085521e7114147f7f9e42db9fbc2289471ebd8a74488214d';
 
 const ROOT = path.join(__dirname, '..');
-const HARNESS_VERSION = 'exam-score-v0.1';
+const HARNESS_VERSION = 'exam-score-v0.2';
 const MATCHER_VERSION = 'exam-matcher-v0.1';
 const BASE = Object.freeze({
   commit: 'f4d852f93caf602f690945366099c28821e40f6b',
@@ -43,8 +43,10 @@ const FROZEN_PATHS = Object.freeze([
 ]);
 const EXAM_RUNTIME_PATHS = Object.freeze([
   'scripts/label-corpus.js',
+  'scripts/adjudicate-union.js',
   'scripts/score-exam.js',
   'schema/exam-label.schema.json',
+  'schema/exam-adjudication.schema.json',
   'schema/exam-score.schema.json',
 ]);
 const SCORING_PROVENANCE_PATHS = Object.freeze([
@@ -308,15 +310,26 @@ function validateScoringCheckout(repoPath = ROOT, expectedTree) {
   const replay = exactTree.load('scripts/replay.js');
   const claims = exactTree.load('src/claims.js');
   const claimDetector = exactTree.load('src/claim-detector.js');
+  const adjudicator = exactTree.load('scripts/adjudicate-union.js');
   replay.validateFrozenCheckout(repoPath);
   matcherDescriptor(repoPath, true);
-  validatedModules = Object.freeze({ exactTree, replay, claims, claimDetector });
+  validatedModules = Object.freeze({ exactTree, replay, claims, claimDetector, adjudicator });
   validatedRuntime = Object.freeze({
     commit: git(repoPath, ['rev-parse', 'HEAD']),
     tree: expectedTree,
     blobs: Object.freeze(blobs),
   });
   return validatedRuntime;
+}
+
+function readValidatedSchema(name) {
+  if (!validatedModules) throw new Error('scoring runtime has not been validated');
+  return validatedModules.exactTree.read(`schema/${name}`);
+}
+
+function validatedAdjudicationProtocol() {
+  if (!validatedModules) throw new Error('scoring runtime has not been validated');
+  return validatedModules.adjudicator.protocolDescriptor(readValidatedSchema);
 }
 
 function schemaValidator(name) {
@@ -498,6 +511,7 @@ function validateLabelRows(rows, corpusRows, kind) {
     mapped.set(row.completion_id, row);
   }
   return mapped;
+
 }
 
 function validateLane(rows, corpusRows, kind) {
@@ -544,7 +558,7 @@ function gate(operator, threshold, metricValue) {
   return { operator, threshold, metric_value: metricValue, status: passed ? 'PASS' : 'FAIL' };
 }
 
-function defaultInputHashes({ corpusRows, contextRows, artifactRows, laneARows, laneBRows, adjudicationRows }) {
+function defaultInputHashes({ corpusRows, contextRows, artifactRows, laneARows, laneBRows, adjudication }) {
   return {
     corpus_sha256: sha256Text(serializeJsonl(corpusRows)),
     context_sha256: sha256Text(serializeJsonl(contextRows)),
@@ -553,15 +567,18 @@ function defaultInputHashes({ corpusRows, contextRows, artifactRows, laneARows, 
     artifact_sha256: sha256Text(serializeJsonl(artifactRows)),
     lane_a_sha256: sha256Text(serializeJsonl(laneARows)),
     lane_b_sha256: sha256Text(serializeJsonl(laneBRows)),
-    labeling_summary_sha256: null,
-    adjudications_sha256: adjudicationRows.length === 0 ? null : sha256Text(serializeJsonl(adjudicationRows)),
+    labeling_summary_sha256: sha256Text(''),
+    adjudication_sha256: sha256Text(`${canonicalize(adjudication)}\n`),
   };
 }
 
 function scoreExam({
   corpusRows, contextRows, artifactRows, laneARows, laneBRows,
-  adjudicationRows = [], matcher = matcherDescriptor(ROOT), inputHashes = null, runtime = null,
+  adjudication, adjudicationRows, matcher = matcherDescriptor(ROOT), inputHashes = null, runtime = null,
 } = {}) {
+  if (Array.isArray(adjudication) || (Array.isArray(adjudicationRows) && adjudicationRows.length > 0)) {
+    throw new TypeError('whole-completion replacement adjudications are forbidden; provide one sealed v2 adjudication artifact');
+  }
   const context = validateInputs(corpusRows, contextRows);
   if (!Array.isArray(artifactRows)) throw new TypeError('artifactRows must be an array');
   const artifacts = new Map();
@@ -579,59 +596,121 @@ function scoreExam({
   }
   const laneA = validateLane(laneARows, corpusRows, 'lane A');
   const laneB = validateLane(laneBRows, corpusRows, 'lane B');
-  if (laneARows[0].labeler.id !== 'lane-a' || laneARows[0].labeler.model_identity !== 'deepseek/deepseek-v4-pro'
-      || laneBRows[0].labeler.id !== 'lane-b' || laneBRows[0].labeler.model_identity !== 'x-ai/grok-4.5') {
-    throw new Error('label files must use the locked lane-a/lane-b model mapping');
+  if (laneARows[0].labeler.id !== 'lane-a' || laneARows[0].labeler.request_model !== 'x-ai/grok-4.5'
+      || laneARows[0].labeler.model_identity !== 'x-ai/grok-4.5'
+      || laneBRows[0].labeler.id !== 'lane-b' || laneBRows[0].labeler.request_model !== 'moonshotai/kimi-k3'
+      || laneBRows[0].labeler.model_identity !== 'kimi-k3-20260715') {
+    throw new Error('label files must use the locked Grok/Kimi lane mapping and pinned identities');
   }
-  const adjudications = validateLabelRows(adjudicationRows, corpusRows, 'adjudication');
-  for (const row of adjudicationRows) {
-    if (row.labeler.model_identity !== 'human' || row.status !== 'ok') {
-      throw new Error('adjudications must be successful human labels');
+  if (!adjudication || typeof adjudication !== 'object') throw new TypeError('sealed v2 adjudication artifact is required');
+  const validateAdjudication = schemaValidator('exam-adjudication.schema.json');
+  if (!validateAdjudication(adjudication)) {
+    throw new TypeError(`v2 adjudication artifact violates schema: ${JSON.stringify(validateAdjudication.errors)}`);
+  }
+  const { buildUnion, candidateIdentity, finalizeCandidate, isRepresentedByUnion, protocolDescriptor } = validatedModules
+    ? validatedModules.adjudicator
+    : require('./adjudicate-union');
+  const protocol = validatedModules ? validatedAdjudicationProtocol() : protocolDescriptor();
+  if (adjudication.protocol_sha256 !== sha256Canonical(protocol)
+      || adjudication.rubric_version !== RUBRIC_VERSION || adjudication.rubric_sha256 !== RUBRIC_SHA256
+      || adjudication.seed !== protocol.seed || canonicalize(adjudication.identities) !== canonicalize(protocol.identities)
+      || canonicalize(adjudication.schema_hashes) !== canonicalize(protocol.schema_hashes)
+      || canonicalize(adjudication.runtime) !== canonicalize(runtime)) {
+    throw new Error('adjudication artifact does not bind the frozen protocol, rubric, identities, schemas, and runtime');
+  }
+  const expectedAdjudicationInputs = {
+    corpus_sha256: inputHashes.corpus_sha256,
+    context_sha256: inputHashes.context_sha256,
+    lane_a_sha256: inputHashes.lane_a_sha256,
+    lane_b_sha256: inputHashes.lane_b_sha256,
+    labeling_summary_sha256: inputHashes.labeling_summary_sha256,
+  };
+  if (canonicalize(adjudication.inputs) !== canonicalize(expectedAdjudicationInputs)) {
+    throw new Error('adjudication artifact does not bind the exact corpus, context, lanes, and labeling summary bytes');
+  }
+  const laneAMap = new Map(laneARows.map((row) => [row.completion_id, row]));
+  const laneBMap = new Map(laneBRows.map((row) => [row.completion_id, row]));
+  const adjudicated = new Map();
+  for (const row of adjudication.rows) {
+    if (adjudicated.has(row.completion_id)) throw new Error(`duplicate adjudication completion_id: ${row.completion_id}`);
+    const corpusRow = corpusRows.find((item) => item.completion_id === row.completion_id);
+    if (!corpusRow) throw new Error(`adjudication has unknown completion_id: ${row.completion_id}`);
+    const deterministicUnion = buildUnion({
+      completion_id: row.completion_id,
+      completion: corpusRow.completion,
+      seed: adjudication.seed,
+      lanes: [laneAMap.get(row.completion_id), laneBMap.get(row.completion_id)].map((lane) => ({
+        id: lane.labeler.id, status: lane.status, claims: lane.claims,
+      })),
+    });
+    const projectLaneCandidate = (candidate) => ({
+      candidate_id: candidate.candidate_id, span_exact_text: candidate.span_exact_text,
+      family: candidate.family, entity: candidate.entity, start: candidate.start, end: candidate.end,
+      source: candidate.source, lane_votes: candidate.lane_votes,
+    });
+    const expectedLaneCandidates = deterministicUnion.map(projectLaneCandidate)
+      .sort((a, b) => a.candidate_id.localeCompare(b.candidate_id));
+    const actualLaneCandidates = row.candidates.filter((candidate) => candidate.source === 'lane_union')
+      .map(projectLaneCandidate).sort((a, b) => a.candidate_id.localeCompare(b.candidate_id));
+    if (canonicalize(actualLaneCandidates) !== canonicalize(expectedLaneCandidates)) {
+      throw new Error('adjudication lane-union candidates, IDs, sources, or lane votes do not equal deterministic derivation');
     }
+    const candidateIds = new Set();
+    for (const candidate of row.candidates) {
+      if (candidateIds.has(candidate.candidate_id)) throw new Error('adjudication candidate IDs must be unique per completion');
+      candidateIds.add(candidate.candidate_id);
+      if (corpusRow.completion.slice(candidate.start, candidate.end) !== candidate.span_exact_text) {
+        throw new Error('adjudication candidate interval does not bind its exact completion span');
+      }
+      if (candidate.source === 'lane_union') {
+        if (candidate.votes.grok !== candidate.lane_votes['lane-a'] || candidate.votes.kimi !== candidate.lane_votes['lane-b']) {
+          throw new Error('lane-union votes do not bind the supplied Grok/Kimi lane decisions');
+        }
+      } else if (isRepresentedByUnion(candidate, deterministicUnion)
+          || candidate.candidate_id !== candidateIdentity(adjudication.seed, row.completion_id, candidate)
+          || !exactKeys(candidate.lane_votes, ['grok', 'kimi'])
+          || candidate.votes.grok !== candidate.lane_votes.grok || candidate.votes.kimi !== candidate.lane_votes.kimi
+          || candidate.votes.gemini !== 'accept') {
+        throw new Error('completeness-sweep candidate ID and votes do not equal deterministic derivation');
+      }
+      if (candidate.decision !== finalizeCandidate(candidate.votes)) {
+        throw new Error('adjudication candidate decision does not equal the frozen two-of-three rule');
+      }
+    }
+    const accepted = row.candidates.filter((candidate) => candidate.decision === 'accept').map((candidate) => ({
+      span_exact_text: candidate.span_exact_text, family: candidate.family, entity: candidate.entity,
+    }));
+    if (canonicalize(accepted) !== canonicalize(row.gold_claims)) {
+      throw new Error('adjudication gold claims are not exactly the accepted candidates');
+    }
+    validateClaimSpans(row.gold_claims, corpusRow.completion);
+    adjudicated.set(row.completion_id, row);
+  }
+  if (adjudicated.size !== corpusRows.length || corpusRows.some((row) => !adjudicated.has(row.completion_id))) {
+    throw new Error('v2 adjudication rows must cover exactly every completion');
+  }
+  const pendingByRows = [...adjudicated.values()].some((row) => row.sweep_status !== 'ok'
+    || row.candidates.some((candidate) => candidate.decision === 'abstain'));
+  if ((adjudication.status === 'COMPLETE' && pendingByRows)
+      || (adjudication.status === 'PENDING_ADJUDICATION' && !pendingByRows)) {
+    throw new Error('adjudication terminal status contradicts its candidate and sweep decisions');
   }
 
-  const goldRows = [];
-  const queue = [];
-  let exactAgreement = 0;
-  for (const corpusRow of corpusRows) {
-    const a = laneA.get(corpusRow.completion_id);
-    const b = laneB.get(corpusRow.completion_id);
-    const agreed = a.status === 'ok' && b.status === 'ok'
-      && canonicalize(agreementSignature(a)) === canonicalize(agreementSignature(b));
-    if (agreed) {
-      exactAgreement += 1;
-      if (adjudications.has(corpusRow.completion_id)) throw new Error('adjudication cannot override dual-labeler agreement');
-      goldRows.push({
-        schema_version: 1, rubric_version: RUBRIC_VERSION, rubric_sha256: RUBRIC_SHA256,
-        completion_id: corpusRow.completion_id, source: 'dual_agreement', claims: gatingClaims(a),
-      });
-      continue;
-    }
-    const adjudication = adjudications.get(corpusRow.completion_id);
-    if (adjudication) {
-      goldRows.push({
-        schema_version: 1, rubric_version: RUBRIC_VERSION, rubric_sha256: RUBRIC_SHA256,
-        completion_id: corpusRow.completion_id, source: 'adjudication', claims: gatingClaims(adjudication),
-      });
-      continue;
-    }
-    queue.push({
-      schema_version: 1,
-      rubric_version: RUBRIC_VERSION,
-      rubric_sha256: RUBRIC_SHA256,
-      completion_id: corpusRow.completion_id,
-      reason: a.status !== 'ok' || b.status !== 'ok' ? 'labeler_operational_failure' : 'label_disagreement',
-      completion: corpusRow.completion,
-      preceding_context: context.get(corpusRow.completion_id),
-      lane_a: { status: a.status, failure: a.failure, claims: a.claims },
-      lane_b: { status: b.status, failure: b.failure, claims: b.claims },
-    });
-  }
-  for (const completionId of adjudications.keys()) {
-    if (!goldRows.some((row) => row.completion_id === completionId)) {
-      throw new Error(`adjudication did not resolve a queued completion: ${completionId}`);
-    }
-  }
+  const goldRows = corpusRows.map((corpusRow) => ({
+    schema_version: 2,
+    rubric_version: RUBRIC_VERSION,
+    rubric_sha256: RUBRIC_SHA256,
+    completion_id: corpusRow.completion_id,
+    source: 'candidate_two_of_three',
+    claims: adjudicated.get(corpusRow.completion_id).gold_claims,
+  }));
+  const queue = [...adjudicated.values()].filter((row) => row.sweep_status !== 'ok'
+      || row.candidates.some((candidate) => candidate.decision === 'abstain')).map((row) => ({
+      schema_version: 2,
+      completion_id: row.completion_id,
+      reason: row.sweep_status !== 'ok' ? 'completeness_sweep_failure' : 'candidate_abstention',
+      candidate_ids: row.candidates.filter((candidate) => candidate.decision === 'abstain').map((candidate) => candidate.candidate_id),
+    }));
 
   const corpus = new Map(corpusRows.map((row) => [row.completion_id, row]));
   let predicted = 0;
@@ -676,20 +755,24 @@ function scoreExam({
   const gates = {
     precision: gate(GATES.precision.operator, GATES.precision.threshold, metrics.precision.value),
     recall: gate(GATES.recall.operator, GATES.recall.threshold, metrics.recall.value),
-    operational_failure_rate: gate(
-      GATES.operational_failure_rate.operator,
-      GATES.operational_failure_rate.threshold,
-      metrics.operational_failure_rate.value,
-    ),
+    operational_failure_rate: gate(GATES.operational_failure_rate.operator, GATES.operational_failure_rate.threshold, metrics.operational_failure_rate.value),
   };
   const completeStatus = Object.values(gates).every((item) => item.status === 'PASS') ? 'PASS' : 'FAIL';
+  let exactAgreement = 0;
+  for (const corpusRow of corpusRows) {
+    const a = laneA.get(corpusRow.completion_id);
+    const b = laneB.get(corpusRow.completion_id);
+    if (a.status === 'ok' && b.status === 'ok'
+        && canonicalize(agreementSignature(a)) === canonicalize(agreementSignature(b))) exactAgreement += 1;
+  }
   const score = {
-    schema_version: 1,
+    schema_version: 2,
     harness_version: HARNESS_VERSION,
+    protocol: { version: adjudication.protocol_version, sha256: adjudication.protocol_sha256 },
     rubric: { version: RUBRIC_VERSION, sha256: RUBRIC_SHA256 },
     matcher,
     runtime,
-    inputs: inputHashes || defaultInputHashes({ corpusRows, contextRows, artifactRows, laneARows, laneBRows, adjudicationRows }),
+    inputs: inputHashes || defaultInputHashes({ corpusRows, contextRows, artifactRows, laneARows, laneBRows, adjudication }),
     counts: {
       corpus_rows: corpusRows.length,
       gold_rows: goldRows.length,
@@ -700,19 +783,22 @@ function scoreExam({
       labeler_invalid_attempts: labelerInvalidAttempts,
       labeler_operational_failure_attempts: labelerOperationalFailureAttempts,
       labeler_operational_failure_rows: labelerFailureRows,
+      adjudicator_operational_failure_requests: adjudication.operational_failure_requests,
     },
-    inter_rater: {
+    inter_rater_diagnostic: {
       exact_completion_agreement: ratio(exactAgreement, corpusRows.length),
       claim_existence_kappa: kappa(laneA, laneB, corpusRows),
+      gating: false,
     },
     metrics,
     gates,
-    exam_status: queue.length > 0 ? 'PENDING_ADJUDICATION' : completeStatus,
+    exam_status: adjudication.status === 'PENDING_ADJUDICATION' ? 'PENDING_ADJUDICATION' : completeStatus,
   };
   const validateScore = schemaValidator('exam-score.schema.json');
   if (!validateScore(score)) throw new TypeError(`generated score violates schema: ${JSON.stringify(validateScore.errors)}`);
   return { score, gold_rows: goldRows, adjudication_queue: queue };
 }
+
 
 function isQuotedOrCode(text, start) {
   const prefix = text.slice(0, start);
@@ -804,7 +890,10 @@ function validateArtifactCoverage(row, corpusRow, candidates, expectedDetector =
 // (scripts/score-exam.js, schema/exam-score.schema.json) are excluded from label-time equality —
 // labels never execute the scorer, and the scoring runtime is separately attested in the score
 // output. Both maps must still cover the identical path set (nothing silently missing).
-const SCORER_ONLY_PATHS = Object.freeze(['scripts/score-exam.js', 'schema/exam-score.schema.json']);
+const SCORER_ONLY_PATHS = Object.freeze([
+  'scripts/adjudicate-union.js', 'scripts/score-exam.js',
+  'schema/exam-adjudication.schema.json', 'schema/exam-score.schema.json',
+]);
 function labelingRuntimeBound(recorded, current) {
   if (!recorded || typeof recorded !== 'object' || Array.isArray(recorded)
       || !exactKeys(recorded, ['commit', 'tree', 'blobs'])
@@ -828,7 +917,7 @@ function validateLabelingSummary({ summary, summaryText, expectedSummarySha256, 
     throw new Error('labeling summary bytes do not match the operator-locked SHA-256');
   }
   if (!exactKeys(summary, ['schema_version', 'rubric_version', 'rubric_sha256', 'corpus_sha256', 'context_sha256', 'runtime', 'lanes'])
-      || summary.schema_version !== 1 || summary.rubric_version !== RUBRIC_VERSION || summary.rubric_sha256 !== RUBRIC_SHA256
+      || summary.schema_version !== 2 || summary.rubric_version !== RUBRIC_VERSION || summary.rubric_sha256 !== RUBRIC_SHA256
       || summary.corpus_sha256 !== sha256Text(corpusText) || summary.context_sha256 !== sha256Text(contextText)
       || !labelingRuntimeBound(summary.runtime, validatedRuntime)
       || !summary.lanes || typeof summary.lanes !== 'object' || Array.isArray(summary.lanes)) {
@@ -843,9 +932,11 @@ function validateLabelingSummary({ summary, summaryText, expectedSummarySha256, 
     const id = laneIds[index];
     const rows = laneRows[index];
     const lane = summary.lanes[id];
-    if (!exactKeys(lane, ['model_identity', 'row_count', 'sha256', 'invalid_attempt_count', 'operational_failure_attempt_count', 'operational_failure_rows'])
+    if (!exactKeys(lane, ['request_model', 'model_identity', 'row_count', 'sha256', 'invalid_attempt_count', 'operational_failure_attempt_count', 'operational_failure_rows'])
+        || lane.request_model !== rows[0].labeler.request_model
         || lane.model_identity !== rows[0].labeler.model_identity
-        || rows.some((row) => row.labeler.id !== id || row.labeler.model_identity !== lane.model_identity)
+        || rows.some((row) => row.labeler.id !== id || row.labeler.request_model !== lane.request_model
+          || row.labeler.model_identity !== lane.model_identity)
         || lane.row_count !== rows.length || lane.sha256 !== sha256Text(laneTexts[index])
         || lane.invalid_attempt_count !== rows.reduce((sum, row) => sum + row.invalid_attempts, 0)
         || lane.operational_failure_attempt_count !== rows.reduce((sum, row) => sum + row.operational_failure_attempts, 0)
@@ -982,41 +1073,49 @@ function parseArgs(argv) {
   }
   const required = [
     'corpus', 'context', 'artifacts', 'expected-artifact-sha256', 'manifest', 'coverage-summary',
-    'lane-a', 'lane-b', 'labeling-summary', 'expected-labeling-summary-sha256', 'expected-tree',
+    'lane-a', 'lane-b', 'labeling-summary', 'expected-labeling-summary-sha256',
+    'adjudication', 'expected-adjudication-sha256', 'expected-tree',
     'output', 'gold', 'queue', 'repo',
   ];
   for (const name of required) if (!values[name]) throw new TypeError(`--${name} is required`);
-  const allowed = new Set([...required, 'adjudications']);
+  const allowed = new Set(required);
   for (const name of Object.keys(values)) if (!allowed.has(name)) throw new TypeError(`unknown option: --${name}`);
   return values;
 }
 
 function help() {
-  return 'Usage: node scripts/score-exam.js --corpus FILE --context FILE --artifacts FILE --expected-artifact-sha256 HEX --manifest FILE --coverage-summary FILE --lane-a FILE --lane-b FILE --labeling-summary FILE --expected-labeling-summary-sha256 HEX --expected-tree GIT_TREE [--adjudications FILE] --output FILE --gold FILE --queue FILE --repo DIR\n\nScores detector gold only with frozen span/entity rules. Unresolved rows are queued and force PENDING_ADJUDICATION.\n';
+  return 'Usage: node scripts/score-exam.js --corpus FILE --context FILE --artifacts FILE --expected-artifact-sha256 HEX --manifest FILE --coverage-summary FILE --lane-a FILE --lane-b FILE --labeling-summary FILE --expected-labeling-summary-sha256 HEX --adjudication FILE --expected-adjudication-sha256 HEX --expected-tree GIT_TREE --output FILE --gold FILE --queue FILE --repo DIR\n\nConsumes only the sealed exam-v2 candidate adjudication artifact; whole-completion replacement is forbidden.\n';
 }
 
 async function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   if (args.help) { process.stdout.write(help()); return; }
+
   const repoFd = openAnchoredDirectory(args.repo, 'repository');
   const repoPath = `/proc/${process.pid}/fd/${repoFd}`;
   try {
     const runtime = validateScoringCheckout(repoPath, args['expected-tree']);
-    const inputNames = ['corpus', 'context', 'artifacts', 'manifest', 'coverage-summary', 'lane-a', 'lane-b', 'labeling-summary', 'adjudications'];
+    const inputNames = ['corpus', 'context', 'artifacts', 'manifest', 'coverage-summary', 'lane-a', 'lane-b', 'labeling-summary', 'adjudication'];
     const inputPaths = Object.fromEntries(inputNames.filter((name) => args[name]).map((name) => [name, path.resolve(args[name])]));
     const requestedOutputs = [args.output, args.gold, args.queue, `${args.output}.sha256`, `${args.gold}.sha256`, `${args.queue}.sha256`];
     const outputPaths = assertPathSeparation(Object.values(inputPaths), requestedOutputs);
     const texts = Object.fromEntries(Object.entries(inputPaths).map(([name, file]) => [
       name, readRegularNoFollow(file, name).toString('utf8'),
     ]));
+    if (!/^[a-f0-9]{64}$/u.test(args['expected-adjudication-sha256'])
+        || sha256Text(texts.adjudication) !== args['expected-adjudication-sha256']) {
+      throw new Error('adjudication bytes do not match the operator-locked SHA-256');
+    }
     let manifest;
     let coverageSummary;
     let labelingSummary;
+    let adjudication;
     try {
       manifest = JSON.parse(texts.manifest);
       coverageSummary = JSON.parse(texts['coverage-summary']);
       labelingSummary = JSON.parse(texts['labeling-summary']);
-    } catch { throw new TypeError('manifest, coverage summary, or labeling summary is invalid JSON'); }
+      adjudication = JSON.parse(texts.adjudication);
+    } catch { throw new TypeError('manifest, coverage summary, labeling summary, or adjudication is invalid JSON'); }
     const { corpusRows, artifactRows } = validateReplayInputs({
       corpusText: texts.corpus,
       artifactText: texts.artifacts,
@@ -1037,14 +1136,13 @@ async function main(argv = process.argv.slice(2)) {
       laneTexts: [texts['lane-a'], texts['lane-b']],
       laneRows: [laneARows, laneBRows],
     });
-    const adjudicationRows = texts.adjudications ? readJsonlText(texts.adjudications, 'adjudications') : [];
     const result = scoreExam({
       corpusRows,
       contextRows,
       artifactRows,
       laneARows,
       laneBRows,
-      adjudicationRows,
+      adjudication,
       matcher: matcherDescriptor(repoPath, true),
       runtime,
       inputHashes: {
@@ -1056,7 +1154,7 @@ async function main(argv = process.argv.slice(2)) {
         lane_a_sha256: sha256Text(texts['lane-a']),
         lane_b_sha256: sha256Text(texts['lane-b']),
         labeling_summary_sha256: sha256Text(texts['labeling-summary']),
-        adjudications_sha256: texts.adjudications ? sha256Text(texts.adjudications) : null,
+        adjudication_sha256: sha256Text(texts.adjudication),
       },
     });
     const scoreText = `${canonicalize(result.score)}\n`;
@@ -1098,9 +1196,12 @@ module.exports = {
   normalizeEntity,
   openAnchoredDirectory,
   readRegularNoFollow,
+  labelingRuntimeBound,
   scoreExam,
   validateArtifactCoverage,
   validateLabelingSummary,
   validateReplayInputs,
   validateScoringCheckout,
+  validatedAdjudicationProtocol,
+  readValidatedSchema,
 };

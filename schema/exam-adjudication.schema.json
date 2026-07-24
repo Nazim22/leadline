@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/exam-adjudication.schema.json",
+  "title": "Leadline exam v2 sealed candidate adjudication artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "protocol_sha256", "rubric_version", "rubric_sha256", "seed", "identities", "runtime", "inputs", "schema_hashes", "status", "invalid_response_attempts", "operational_failure_attempts", "operational_failure_requests", "rows"],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "protocol_version": { "const": "exam-v2.0" },
+    "protocol_sha256": { "$ref": "#/$defs/sha256" },
+    "rubric_version": { "const": "detector-gold-v0.2" },
+    "rubric_sha256": { "$ref": "#/$defs/sha256" },
+    "seed": { "const": "leadline-exam-v2-union-seed-20260724" },
+    "identities": {
+      "type": "object", "additionalProperties": false, "required": ["grok", "kimi", "gemini"],
+      "properties": {
+        "grok": { "$ref": "#/$defs/grok" },
+        "kimi": { "$ref": "#/$defs/kimi" },
+        "gemini": { "$ref": "#/$defs/gemini" }
+      }
+    },
+    "runtime": {
+      "type": "object", "additionalProperties": false, "required": ["commit", "tree", "blobs"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "tree": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "blobs": {
+          "type": "object", "minProperties": 1,
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+        }
+      }
+    },
+    "inputs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["corpus_sha256", "context_sha256", "lane_a_sha256", "lane_b_sha256", "labeling_summary_sha256"],
+      "properties": {
+        "corpus_sha256": { "$ref": "#/$defs/sha256" },
+        "context_sha256": { "$ref": "#/$defs/sha256" },
+        "lane_a_sha256": { "$ref": "#/$defs/sha256" },
+        "lane_b_sha256": { "$ref": "#/$defs/sha256" },
+        "labeling_summary_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "schema_hashes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exam-label.schema.json", "exam-adjudication.schema.json", "exam-score.schema.json"],
+      "properties": {
+        "exam-label.schema.json": { "$ref": "#/$defs/sha256" },
+        "exam-adjudication.schema.json": { "$ref": "#/$defs/sha256" },
+        "exam-score.schema.json": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "status": { "enum": ["COMPLETE", "PENDING_ADJUDICATION"] },
+    "invalid_response_attempts": { "type": "integer", "minimum": 0 },
+    "operational_failure_attempts": { "type": "integer", "minimum": 0 },
+    "operational_failure_requests": { "type": "integer", "minimum": 0 },
+    "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "model": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_model", "model_identity"],
+      "properties": { "request_model": { "type": "string" }, "model_identity": { "type": "string" } }
+    },
+    "grok": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "x-ai/grok-4.5" }, "model_identity": { "const": "x-ai/grok-4.5" } } }] },
+    "kimi": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "moonshotai/kimi-k3" }, "model_identity": { "const": "kimi-k3-20260715" } } }] },
+    "gemini": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "google/gemini-3.5-flash" }, "model_identity": { "const": "google/gemini-3.5-flash" } } }] },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["span_exact_text", "family", "entity"],
+      "properties": {
+        "span_exact_text": { "type": "string", "minLength": 1 },
+        "family": { "enum": ["historical", "structural", "repository", "runtime"] },
+        "entity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "vote": { "enum": ["accept", "reject", "abstain", "operational_failure"] },
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_id", "span_exact_text", "family", "entity", "start", "end", "source", "lane_votes", "votes", "decision"],
+      "properties": {
+        "candidate_id": { "type": "string", "pattern": "^candidate-[a-f0-9]{24}$" },
+        "span_exact_text": { "type": "string", "minLength": 1 },
+        "family": { "enum": ["historical", "structural", "repository", "runtime"] },
+        "entity": { "type": "string", "minLength": 1 },
+        "start": { "$ref": "#/$defs/count" },
+        "end": { "type": "integer", "minimum": 1 },
+        "source": { "enum": ["lane_union", "completeness_sweep"] },
+        "lane_votes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/vote" } },
+        "votes": {
+          "type": "object", "additionalProperties": false, "required": ["grok", "kimi", "gemini"],
+          "properties": { "grok": { "$ref": "#/$defs/vote" }, "kimi": { "$ref": "#/$defs/vote" }, "gemini": { "$ref": "#/$defs/vote" } }
+        },
+        "decision": { "enum": ["accept", "reject", "abstain"] }
+      }
+    },
+    "row": {
+      "type": "object", "additionalProperties": false,
+      "required": ["completion_id", "sweep_status", "candidates", "gold_claims"],
+      "properties": {
+        "completion_id": { "type": "string", "pattern": "^completion-[a-f0-9]{24}$" },
+        "sweep_status": { "enum": ["ok", "operational_failure"] },
+        "candidates": { "type": "array", "items": { "$ref": "#/$defs/candidate" } },
+        "gold_claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } }
+      }
+    }
+  }
+}

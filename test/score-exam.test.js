@@ -14,6 +14,7 @@ const {
   PROVENANCE_PATHS: SCORING_PROVENANCE_PATHS,
   createExactTreeLoader,
   createExactTreeSchemaFs,
+  labelingRuntimeBound,
   matcherDescriptor,
   matchCompletion,
   normalizeEntity,
@@ -25,13 +26,14 @@ const {
   PROVENANCE_PATHS: LABEL_PROVENANCE_PATHS,
   RUBRIC_SHA256,
 } = require('../scripts/label-corpus');
+const { buildUnion, candidateIdentity, finalizeCandidate, LANE_MODELS, PROTOCOL_VERSION, UNION_SEED, protocolDescriptor } = require('../scripts/adjudicate-union');
 
 const ROOT = path.join(__dirname, '..');
 const runtimeFixture = () => ({ commit: 'a'.repeat(40), tree: 'b'.repeat(40), blobs: { 'scripts/score-exam.js': 'c'.repeat(40) } });
 const inputHashesFixture = () => ({
   corpus_sha256: 'd'.repeat(64), context_sha256: 'd'.repeat(64), manifest_sha256: 'd'.repeat(64),
   coverage_summary_sha256: 'd'.repeat(64), artifact_sha256: 'd'.repeat(64), lane_a_sha256: 'd'.repeat(64),
-  lane_b_sha256: 'd'.repeat(64), labeling_summary_sha256: 'd'.repeat(64), adjudications_sha256: null,
+  lane_b_sha256: 'd'.repeat(64), labeling_summary_sha256: 'd'.repeat(64), adjudication_sha256: 'd'.repeat(64),
 });
 
 function corpusRows() {
@@ -94,13 +96,14 @@ function claim(span, family, entity, confidence = 0.9) {
   return { span_exact_text: span, family, entity, confidence };
 }
 
-function label(completionId, labelerId, modelIdentity, claims, status = 'ok') {
+function label(completionId, labelerId, claims, status = 'ok') {
+  const identity = labelerId === 'lane-a' ? LANE_MODELS.grok : LANE_MODELS.kimi;
   return {
-    schema_version: 1,
-    rubric_version: 'detector-gold-v0.1',
+    schema_version: 2,
+    rubric_version: 'detector-gold-v0.2',
     rubric_sha256: RUBRIC_SHA256,
     completion_id: completionId,
-    labeler: { id: labelerId, model_identity: modelIdentity },
+    labeler: { id: labelerId, ...identity },
     status,
     attempts: status === 'ok' ? 1 : 2,
     invalid_attempts: status === 'ok' ? 0 : 2,
@@ -112,27 +115,78 @@ function label(completionId, labelerId, modelIdentity, claims, status = 'ok') {
 
 function lanes() {
   const a = [
-    label('completion-111111111111111111111111', 'lane-a', 'deepseek/deepseek-v4-pro', [claim('The API is live.', 'runtime', 'API', 0.99)]),
-    label('completion-222222222222222222222222', 'lane-a', 'deepseek/deepseek-v4-pro', [claim('The tests passed.', 'runtime', 'tests')]),
-    label('completion-333333333333333333333333', 'lane-a', 'deepseek/deepseek-v4-pro', []),
-    label('completion-444444444444444444444444', 'lane-a', 'deepseek/deepseek-v4-pro', [claim('The build passed.', 'runtime', 'build')]),
+    label('completion-111111111111111111111111', 'lane-a', [claim('The API is live.', 'runtime', 'API', 0.99)]),
+    label('completion-222222222222222222222222', 'lane-a', [claim('The tests passed.', 'runtime', 'tests')]),
+    label('completion-333333333333333333333333', 'lane-a', []),
+    label('completion-444444444444444444444444', 'lane-a', [claim('The build passed.', 'runtime', 'build')]),
   ];
   const b = [
-    label('completion-111111111111111111111111', 'lane-b', 'x-ai/grok-4.5', [{ ...claim('The API is live.', 'runtime', 'api', 0.7), relevant_evidence_contact_visible: 'uncertain' }]),
-    label('completion-222222222222222222222222', 'lane-b', 'x-ai/grok-4.5', []),
-    label('completion-333333333333333333333333', 'lane-b', 'x-ai/grok-4.5', []),
-    label('completion-444444444444444444444444', 'lane-b', 'x-ai/grok-4.5', [claim('The build passed.', 'runtime', 'build')]),
+    label('completion-111111111111111111111111', 'lane-b', [{ ...claim('The API is live.', 'runtime', 'api', 0.7), relevant_evidence_contact_visible: 'uncertain' }]),
+    label('completion-222222222222222222222222', 'lane-b', []),
+    label('completion-333333333333333333333333', 'lane-b', []),
+    label('completion-444444444444444444444444', 'lane-b', [claim('The build passed.', 'runtime', 'build')]),
   ];
   return { a, b };
 }
 
-function adjudicationForTests() {
-  return label(
-    'completion-222222222222222222222222',
-    'nazz',
-    'human',
-    [claim('The tests passed.', 'runtime', 'tests')],
-  );
+function canonicalJson(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+}
+
+function sealedAdjudication(complete = false) {
+  const protocol = protocolDescriptor();
+  const sources = corpusRows();
+  const { a, b } = lanes();
+  const laneMaps = [new Map(a.map((row) => [row.completion_id, row])), new Map(b.map((row) => [row.completion_id, row]))];
+  const rows = sources.map((source) => {
+    const laneRows = laneMaps.map((lane) => lane.get(source.completion_id));
+    const union = buildUnion({
+      completion_id: source.completion_id,
+      completion: source.completion,
+      seed: UNION_SEED,
+      lanes: laneRows.map((row) => ({ id: row.labeler.id, status: row.status, claims: row.claims })),
+    });
+    const candidates = union.map((candidate) => {
+      const votes = {
+        grok: candidate.lane_votes['lane-a'],
+        kimi: candidate.lane_votes['lane-b'],
+        gemini: source.completion_id.includes('2222') && !complete ? 'abstain' : 'accept',
+      };
+      return { ...candidate, votes, decision: finalizeCandidate(votes) };
+    });
+    return {
+      completion_id: source.completion_id,
+      sweep_status: 'ok',
+      candidates,
+      gold_claims: candidates.filter((item) => item.decision === 'accept').map((item) => ({
+        span_exact_text: item.span_exact_text, family: item.family, entity: item.entity,
+      })),
+    };
+  });
+  return {
+    schema_version: 2,
+    protocol_version: PROTOCOL_VERSION,
+    protocol_sha256: crypto.createHash('sha256').update(canonicalJson(protocol)).digest('hex'),
+    rubric_version: 'detector-gold-v0.2', rubric_sha256: RUBRIC_SHA256,
+    seed: UNION_SEED,
+    identities: protocol.identities,
+    runtime: runtimeFixture(),
+    inputs: {
+      corpus_sha256: inputHashesFixture().corpus_sha256,
+      context_sha256: inputHashesFixture().context_sha256,
+      lane_a_sha256: inputHashesFixture().lane_a_sha256,
+      lane_b_sha256: inputHashesFixture().lane_b_sha256,
+      labeling_summary_sha256: inputHashesFixture().labeling_summary_sha256,
+    },
+    schema_hashes: protocol.schema_hashes,
+    status: complete ? 'COMPLETE' : 'PENDING_ADJUDICATION',
+    invalid_response_attempts: 0,
+    operational_failure_attempts: 0,
+    operational_failure_requests: 0,
+    rows,
+  };
 }
 
 test('exact-tree loader ignores repository pathname replacement after descriptor acquisition', () => {
@@ -183,50 +237,35 @@ test('labeling and scoring bind the identical runtime provenance set', () => {
   assert.deepEqual(LABEL_PROVENANCE_PATHS, SCORING_PROVENANCE_PATHS);
 });
 
-test('agreement becomes gold while disagreement is queued and excluded until adjudication', () => {
+test('sealed candidate abstention forces pending while inter-rater agreement remains diagnostic only', () => {
   const { a, b } = lanes();
   const result = scoreExam({
     corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
-    laneARows: a, laneBRows: b, adjudicationRows: [], matcher: matcherDescriptor(ROOT),
+    laneARows: a, laneBRows: b, adjudication: sealedAdjudication(false), matcher: matcherDescriptor(ROOT),
     runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
   });
 
-  assert.deepEqual(result.gold_rows.map((row) => row.completion_id), [
-    'completion-111111111111111111111111',
-    'completion-333333333333333333333333',
-    'completion-444444444444444444444444',
-  ]);
+  assert.equal(result.gold_rows.length, 4);
   assert.equal(result.adjudication_queue.length, 1);
   assert.equal(result.adjudication_queue[0].completion_id, 'completion-222222222222222222222222');
-  assert.equal(result.adjudication_queue[0].reason, 'label_disagreement');
-  assert.equal(result.adjudication_queue[0].completion, 'The tests passed.');
+  assert.equal(result.adjudication_queue[0].reason, 'candidate_abstention');
   assert.equal(result.score.exam_status, 'PENDING_ADJUDICATION');
-  assert.deepEqual(result.score.inter_rater.exact_completion_agreement, { numerator: 3, denominator: 4, value: 0.75 });
-  assert.deepEqual(result.score.inter_rater.claim_existence_kappa, { numerator: 0.25, denominator: 0.5, value: 0.5, rated_rows: 4 });
+  assert.equal(result.score.inter_rater_diagnostic.gating, false);
+  assert.deepEqual(result.score.inter_rater_diagnostic.exact_completion_agreement, { numerator: 3, denominator: 4, value: 0.75 });
+  assert.deepEqual(result.score.inter_rater_diagnostic.claim_existence_kappa, { numerator: 0.25, denominator: 0.5, value: 0.5, rated_rows: 4 });
 
-  assert.deepEqual(Object.keys(result.score.metrics).sort(), [
-    'entity_agreement', 'family_agreement', 'full_tuple_match', 'gold_zero_false_positive_rate',
-    'operational_failure_rate', 'precision', 'recall',
-  ]);
-  assert.deepEqual(result.score.metrics.precision, { numerator: 1, denominator: 2, value: 0.5 });
+  assert.deepEqual(result.score.metrics.precision, { numerator: 1, denominator: 3, value: 1 / 3 });
   assert.deepEqual(result.score.metrics.recall, { numerator: 1, denominator: 2, value: 0.5 });
-  assert.deepEqual(result.score.metrics.family_agreement, { numerator: 1, denominator: 1, value: 1 });
-  assert.deepEqual(result.score.metrics.entity_agreement, { numerator: 1, denominator: 1, value: 1 });
-  assert.deepEqual(result.score.metrics.full_tuple_match, { numerator: 1, denominator: 2, value: 0.5 });
-  assert.deepEqual(result.score.metrics.gold_zero_false_positive_rate, { numerator: 1, denominator: 1, value: 1 });
+  assert.deepEqual(result.score.metrics.gold_zero_false_positive_rate, { numerator: 2, denominator: 2, value: 1 });
   assert.deepEqual(result.score.metrics.operational_failure_rate, { numerator: 1, denominator: 4, value: 0.25 });
-  assert.equal(result.score.gates.precision.status, 'FAIL');
-  assert.equal(result.score.gates.recall.status, 'PASS');
-  assert.equal(result.score.gates.operational_failure_rate.status, 'FAIL');
 });
 
-test('adjudication completes gold, emits final gate verdict, and validates the score schema', () => {
+test('sealed two-of-three adjudication completes gold, emits final gate verdict, and validates schema', () => {
   const { a, b } = lanes();
   const result = scoreExam({
     corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
-    laneARows: a, laneBRows: b, adjudicationRows: [adjudicationForTests()], matcher: matcherDescriptor(ROOT),
-    runtime: runtimeFixture(),
-    inputHashes: { ...inputHashesFixture(), adjudications_sha256: 'd'.repeat(64) },
+    laneARows: a, laneBRows: b, adjudication: sealedAdjudication(true), matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
   });
   assert.equal(result.adjudication_queue.length, 0);
   assert.equal(result.gold_rows.length, 4);
@@ -242,6 +281,76 @@ test('adjudication completes gold, emits final gate verdict, and validates the s
   const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'schema', 'exam-score.schema.json'), 'utf8'));
   const validate = new Ajv2020({ strict: false }).compile(schema);
   assert.equal(validate(result.score), true, JSON.stringify(validate.errors));
+
+  const tampered = sealedAdjudication(true);
+  tampered.runtime = { ...tampered.runtime, tree: 'a'.repeat(40) };
+  assert.throws(() => scoreExam({
+    corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
+    laneARows: a, laneBRows: b, adjudication: tampered, matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
+  }), /runtime/u);
+
+  const wrongInputs = sealedAdjudication(true);
+  wrongInputs.inputs.lane_a_sha256 = 'f'.repeat(64);
+  assert.throws(() => scoreExam({
+    corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
+    laneARows: a, laneBRows: b, adjudication: wrongInputs, matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
+  }), /exact corpus, context, lanes/u);
+
+  const omittedUnion = sealedAdjudication(true);
+  omittedUnion.rows[0].candidates = [];
+  omittedUnion.rows[0].gold_claims = [];
+  assert.throws(() => scoreExam({
+    corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
+    laneARows: a, laneBRows: b, adjudication: omittedUnion, matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
+  }), /deterministic derivation/u);
+
+  const forgedLaneVote = sealedAdjudication(true);
+  forgedLaneVote.rows[0].candidates[0].lane_votes['lane-a'] = 'reject';
+  forgedLaneVote.rows[0].candidates[0].votes.grok = 'reject';
+  forgedLaneVote.rows[0].candidates[0].decision = finalizeCandidate(forgedLaneVote.rows[0].candidates[0].votes);
+  forgedLaneVote.rows[0].gold_claims = [];
+  assert.throws(() => scoreExam({
+    corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
+    laneARows: a, laneBRows: b, adjudication: forgedLaneVote, matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
+  }), /deterministic derivation/u);
+
+  const forgedSweep = sealedAdjudication(true);
+  const represented = forgedSweep.rows[0].candidates[0];
+  const containedText = 'API is live.';
+  const containedStart = corpusRows()[0].completion.indexOf(containedText);
+  const sweepCandidate = {
+    ...represented,
+    span_exact_text: containedText,
+    start: containedStart,
+    end: containedStart + containedText.length,
+    source: 'completeness_sweep',
+    lane_votes: { grok: 'accept', kimi: 'accept' },
+    votes: { grok: 'accept', kimi: 'accept', gemini: 'accept' },
+    decision: 'accept',
+  };
+  sweepCandidate.candidate_id = candidateIdentity(UNION_SEED, forgedSweep.rows[0].completion_id, sweepCandidate);
+  forgedSweep.rows[0].candidates.push(sweepCandidate);
+  forgedSweep.rows[0].gold_claims.push({
+    span_exact_text: sweepCandidate.span_exact_text, family: sweepCandidate.family, entity: sweepCandidate.entity,
+  });
+  assert.throws(() => scoreExam({
+    corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
+    laneARows: a, laneBRows: b, adjudication: forgedSweep, matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
+  }), /completeness-sweep candidate/u);
+
+  const unsupportedInvalid = sealedAdjudication(true);
+  unsupportedInvalid.status = 'INVALID_EXAM';
+  unsupportedInvalid.rows = [];
+  assert.throws(() => scoreExam({
+    corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
+    laneARows: a, laneBRows: b, adjudication: unsupportedInvalid, matcher: matcherDescriptor(ROOT),
+    runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
+  }), /violates schema/u);
 });
 
 test('frozen matcher uses candidate interval containment and minimal entity normalization only', () => {
@@ -321,7 +430,7 @@ test('scoring rejects reversed locked lane identities', () => {
   const { a, b } = lanes();
   assert.throws(() => scoreExam({
     corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
-    laneARows: b, laneBRows: a, adjudicationRows: [], matcher: matcherDescriptor(ROOT),
+    laneARows: b, laneBRows: a, adjudication: sealedAdjudication(true), matcher: matcherDescriptor(ROOT),
     runtime: runtimeFixture(), inputHashes: inputHashesFixture(),
   }), /lane-a|locked|model/u);
 });
@@ -335,4 +444,40 @@ test('untrusted label rows with impossible attempt accounting are rejected', () 
     corpusRows: corpusRows(), contextRows: contextRows(), artifactRows: artifacts(),
     laneARows: tampered, laneBRows: b, adjudicationRows: [], matcher: matcherDescriptor(ROOT),
   }), /violates schema/u);
+});
+
+function causalRuntimeFixtures() {
+  const current = { blobs: {
+    'scripts/label-corpus.js': '1'.repeat(40),
+    'schema/exam-label.schema.json': '2'.repeat(40),
+    'scripts/score-exam.js': '3'.repeat(40),
+    'schema/exam-score.schema.json': '4'.repeat(40),
+  } };
+  const recorded = { commit: 'a'.repeat(40), tree: 'b'.repeat(40), blobs: { ...current.blobs } };
+  return { current, recorded };
+}
+
+test('labeling runtime binding permits scorer-only byte drift', () => {
+  const { current, recorded } = causalRuntimeFixtures();
+  recorded.blobs['scripts/score-exam.js'] = '5'.repeat(40);
+  recorded.blobs['schema/exam-score.schema.json'] = '6'.repeat(40);
+  assert.equal(labelingRuntimeBound(recorded, current), true);
+});
+
+test('labeling runtime binding rejects labeler executable byte drift', () => {
+  const { current, recorded } = causalRuntimeFixtures();
+  recorded.blobs['scripts/label-corpus.js'] = '7'.repeat(40);
+  assert.equal(labelingRuntimeBound(recorded, current), false);
+});
+
+test('labeling runtime binding rejects a missing provenance path', () => {
+  const { current, recorded } = causalRuntimeFixtures();
+  delete recorded.blobs['schema/exam-label.schema.json'];
+  assert.equal(labelingRuntimeBound(recorded, current), false);
+});
+
+test('labeling runtime binding rejects an extra provenance path', () => {
+  const { current, recorded } = causalRuntimeFixtures();
+  recorded.blobs['scripts/unbound.js'] = '8'.repeat(40);
+  assert.equal(labelingRuntimeBound(recorded, current), false);
 });

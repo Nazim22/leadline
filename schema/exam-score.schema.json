@@ -1,25 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://leadline.dev/schema/exam-score.schema.json",
-  "title": "Leadline detector-gold exam score",
+  "title": "Leadline detector-gold exam v2 score",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "harness_version", "rubric", "matcher", "runtime", "inputs", "counts", "inter_rater", "metrics", "gates", "exam_status"],
+  "required": ["schema_version", "harness_version", "protocol", "rubric", "matcher", "runtime", "inputs", "counts", "inter_rater_diagnostic", "metrics", "gates", "exam_status"],
   "properties": {
-    "schema_version": { "const": 1 },
-    "harness_version": { "const": "exam-score-v0.1" },
+    "schema_version": { "const": 2 },
+    "harness_version": { "const": "exam-score-v0.2" },
+    "protocol": {
+      "type": "object", "additionalProperties": false, "required": ["version", "sha256"],
+      "properties": { "version": { "const": "exam-v2.0" }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
     "rubric": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["version", "sha256"],
-      "properties": {
-        "version": { "const": "detector-gold-v0.1" },
-        "sha256": { "$ref": "#/$defs/sha256" }
-      }
+      "type": "object", "additionalProperties": false, "required": ["version", "sha256"],
+      "properties": { "version": { "const": "detector-gold-v0.2" }, "sha256": { "$ref": "#/$defs/sha256" } }
     },
     "matcher": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["version", "sha256", "git_blob", "span_rule", "entity_rule"],
       "properties": {
         "version": { "const": "exam-matcher-v0.1" },
@@ -30,24 +28,21 @@
       }
     },
     "runtime": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["commit", "tree", "blobs"],
-      "properties": {
-        "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
-        "tree": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
-        "blobs": {
-          "type": "object",
-          "minProperties": 1,
-          "propertyNames": { "type": "string", "minLength": 1 },
-          "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{40}$" }
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false, "required": ["commit", "tree", "blobs"],
+          "properties": {
+            "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "tree": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "blobs": { "type": "object", "minProperties": 1, "propertyNames": { "type": "string", "minLength": 1 }, "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{40}$" } }
+          }
         }
-      }
+      ]
     },
     "inputs": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["corpus_sha256", "context_sha256", "manifest_sha256", "coverage_summary_sha256", "artifact_sha256", "lane_a_sha256", "lane_b_sha256", "labeling_summary_sha256", "adjudications_sha256"],
+      "type": "object", "additionalProperties": false,
+      "required": ["corpus_sha256", "context_sha256", "manifest_sha256", "coverage_summary_sha256", "artifact_sha256", "lane_a_sha256", "lane_b_sha256", "labeling_summary_sha256", "adjudication_sha256"],
       "properties": {
         "corpus_sha256": { "$ref": "#/$defs/sha256" },
         "context_sha256": { "$ref": "#/$defs/sha256" },
@@ -57,13 +52,12 @@
         "lane_a_sha256": { "$ref": "#/$defs/sha256" },
         "lane_b_sha256": { "$ref": "#/$defs/sha256" },
         "labeling_summary_sha256": { "$ref": "#/$defs/sha256" },
-        "adjudications_sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
+        "adjudication_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "counts": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["corpus_rows", "gold_rows", "pending_adjudication_rows", "predicted_claims_scored", "gold_claims_scored", "detector_operational_failure_rows", "labeler_invalid_attempts", "labeler_operational_failure_attempts", "labeler_operational_failure_rows"],
+      "type": "object", "additionalProperties": false,
+      "required": ["corpus_rows", "gold_rows", "pending_adjudication_rows", "predicted_claims_scored", "gold_claims_scored", "detector_operational_failure_rows", "labeler_invalid_attempts", "labeler_operational_failure_attempts", "labeler_operational_failure_rows", "adjudicator_operational_failure_requests"],
       "properties": {
         "corpus_rows": { "$ref": "#/$defs/count" },
         "gold_rows": { "$ref": "#/$defs/count" },
@@ -73,46 +67,40 @@
         "detector_operational_failure_rows": { "$ref": "#/$defs/count" },
         "labeler_invalid_attempts": { "$ref": "#/$defs/count" },
         "labeler_operational_failure_attempts": { "$ref": "#/$defs/count" },
-        "labeler_operational_failure_rows": { "$ref": "#/$defs/count" }
+        "labeler_operational_failure_rows": { "$ref": "#/$defs/count" },
+        "adjudicator_operational_failure_requests": { "$ref": "#/$defs/count" }
       }
     },
-    "inter_rater": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["exact_completion_agreement", "claim_existence_kappa"],
+    "inter_rater_diagnostic": {
+      "type": "object", "additionalProperties": false,
+      "required": ["exact_completion_agreement", "claim_existence_kappa", "gating"],
       "properties": {
         "exact_completion_agreement": { "$ref": "#/$defs/ratio" },
         "claim_existence_kappa": {
-          "type": "object",
-          "additionalProperties": false,
+          "type": "object", "additionalProperties": false,
           "required": ["numerator", "denominator", "value", "rated_rows"],
           "properties": {
-            "numerator": { "type": "number" },
-            "denominator": { "type": "number", "minimum": 0 },
+            "numerator": { "type": "number" }, "denominator": { "type": "number", "minimum": 0 },
             "value": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
             "rated_rows": { "$ref": "#/$defs/count" }
           }
-        }
+        },
+        "gating": { "const": false }
       }
     },
     "metrics": {
-      "type": "object",
-      "additionalProperties": false,
+      "type": "object", "additionalProperties": false,
       "required": ["precision", "recall", "family_agreement", "entity_agreement", "full_tuple_match", "gold_zero_false_positive_rate", "operational_failure_rate"],
       "properties": {
-        "precision": { "$ref": "#/$defs/ratio" },
-        "recall": { "$ref": "#/$defs/ratio" },
-        "family_agreement": { "$ref": "#/$defs/ratio" },
-        "entity_agreement": { "$ref": "#/$defs/ratio" },
+        "precision": { "$ref": "#/$defs/ratio" }, "recall": { "$ref": "#/$defs/ratio" },
+        "family_agreement": { "$ref": "#/$defs/ratio" }, "entity_agreement": { "$ref": "#/$defs/ratio" },
         "full_tuple_match": { "$ref": "#/$defs/ratio" },
         "gold_zero_false_positive_rate": { "$ref": "#/$defs/ratio" },
         "operational_failure_rate": { "$ref": "#/$defs/ratio" }
       }
     },
     "gates": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["precision", "recall", "operational_failure_rate"],
+      "type": "object", "additionalProperties": false, "required": ["precision", "recall", "operational_failure_rate"],
       "properties": {
         "precision": { "$ref": "#/$defs/minGate" },
         "recall": { "$ref": "#/$defs/recallGate" },
@@ -125,43 +113,22 @@
     "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "count": { "type": "integer", "minimum": 0 },
     "ratio": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["numerator", "denominator", "value"],
+      "type": "object", "additionalProperties": false, "required": ["numerator", "denominator", "value"],
       "properties": {
-        "numerator": { "$ref": "#/$defs/count" },
-        "denominator": { "$ref": "#/$defs/count" },
+        "numerator": { "$ref": "#/$defs/count" }, "denominator": { "$ref": "#/$defs/count" },
         "value": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
       }
     },
     "gateBase": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["operator", "threshold", "metric_value", "status"],
+      "type": "object", "additionalProperties": false, "required": ["operator", "threshold", "metric_value", "status"],
       "properties": {
-        "operator": { "enum": [">=", "<"] },
-        "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "operator": { "enum": [">=", "<"] }, "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
         "metric_value": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
         "status": { "enum": ["PASS", "FAIL"] }
       }
     },
-    "minGate": {
-      "allOf": [
-        { "$ref": "#/$defs/gateBase" },
-        { "properties": { "operator": { "const": ">=" }, "threshold": { "const": 0.7 } } }
-      ]
-    },
-    "recallGate": {
-      "allOf": [
-        { "$ref": "#/$defs/gateBase" },
-        { "properties": { "operator": { "const": ">=" }, "threshold": { "const": 0.4 } } }
-      ]
-    },
-    "maxGate": {
-      "allOf": [
-        { "$ref": "#/$defs/gateBase" },
-        { "properties": { "operator": { "const": "<" }, "threshold": { "const": 0.1 } } }
-      ]
-    }
+    "minGate": { "allOf": [{ "$ref": "#/$defs/gateBase" }, { "properties": { "operator": { "const": ">=" }, "threshold": { "const": 0.7 } } }] },
+    "recallGate": { "allOf": [{ "$ref": "#/$defs/gateBase" }, { "properties": { "operator": { "const": ">=" }, "threshold": { "const": 0.4 } } }] },
+    "maxGate": { "allOf": [{ "$ref": "#/$defs/gateBase" }, { "properties": { "operator": { "const": "<" }, "threshold": { "const": 0.1 } } }] }
   }
 }

@@ -871,7 +871,7 @@ function validateReplayInputs({ corpusText, artifactText, manifest, coverageSumm
   const coverageKeys = [
     'schema_version', 'mode', 'manifest_sha256', 'corpus_sha256', 'artifact_sha256',
     'sampled_completions', 'stratum_counts', 'zero_candidate_completions', 'detector_status_counts',
-    'operational_failure_completions', 'evidence_contacts', 'obligation_count', 'labels_attached',
+    'operational_failure_completions', 'evidence_contact_count', 'obligation_count', 'labels_attached',
   ];
   if (!exactKeys(coverageSummary, coverageKeys) || coverageSummary.schema_version !== 1
       || coverageSummary.mode !== 'coverage' || coverageSummary.labels_attached !== false
@@ -881,7 +881,7 @@ function validateReplayInputs({ corpusText, artifactText, manifest, coverageSumm
       || !exactKeys(coverageSummary.detector_status_counts, ['invalid_response', 'ok', 'unavailable'])
       || !coverageSummary.stratum_counts || typeof coverageSummary.stratum_counts !== 'object' || Array.isArray(coverageSummary.stratum_counts)
       || Object.values(coverageSummary.stratum_counts).some((value) => !Number.isInteger(value) || value < 0)
-      || ['sampled_completions', 'zero_candidate_completions', 'operational_failure_completions', 'evidence_contacts', 'obligation_count']
+      || ['sampled_completions', 'zero_candidate_completions', 'operational_failure_completions', 'evidence_contact_count', 'obligation_count']
         .some((key) => !Number.isInteger(coverageSummary[key]) || coverageSummary[key] < 0)
       || Object.values(coverageSummary.detector_status_counts).some((value) => !Number.isInteger(value) || value < 0)) {
     throw new Error('coverage summary has invalid strict shape');
@@ -913,7 +913,7 @@ function validateReplayInputs({ corpusText, artifactText, manifest, coverageSumm
     ['stratum_counts', stratumCounts],
     ['zero_candidate_completions', zeroCandidateCompletions],
     ['operational_failure_completions', operationalFailureCompletions],
-    ['evidence_contacts', evidenceContactCount],
+    ['evidence_contact_count', evidenceContactCount],
     ['obligation_count', obligationCount],
     ['labels_attached', false],
   ];

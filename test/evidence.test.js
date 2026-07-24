@@ -10,7 +10,9 @@ const {
 
 const EVIDENCE_KEYS = [
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
-  'capability', 'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
+  'capability', 'capability_rule_id', 'execution_status', 'execution_reason', 'exit_code', 'is_error',
+  'http_status', 'outcome_verdict', 'outcome_reason', 'normalizer_version', 'normalizer_blob_sha256',
+  'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
   'references', 'references_redacted', 'references_truncated', 'failure',
 ].sort();
 
@@ -26,7 +28,7 @@ test('evidence-contact receipt is a frozen, exact-keys, canonically-hashed objec
   assert.equal(Object.isFrozen(receipt), true);
   assert.deepEqual(Object.keys(receipt).sort(), EVIDENCE_KEYS);
   assert.match(receipt.evidence_id, /^evidence-[a-f0-9]{24}$/);
-  assert.equal(receipt.schema_version, '1.0');
+  assert.equal(receipt.schema_version, '2.0');
   assert.equal(receipt.provider, 'cli-probe');
   assert.equal(receipt.tool_name, 'curl');
   assert.equal(receipt.capability, null);
@@ -71,9 +73,21 @@ test('secret-shaped tokens in tool OUTPUT are redacted before they can persist a
 });
 
 test('redactSecrets masks known secret shapes and connection-string credentials', () => {
-  assert.equal(redactSecrets('token ghp_ABCDEFGHIJKLMNOPQRSTUVWX12345').includes('ghp_ABCDEFGHIJKLMNOPQRSTUVWX12345'), false);
-  assert.equal(redactSecrets('key AKIAIOSFODNN7EXAMPLE here').includes('AKIAIOSFODNN7EXAMPLE'), false);
-  assert.match(redactSecrets('mysql://root:hunter2@db/app'), /mysql:\/\/\*\*\*:\*\*\*@/);
+  const githubToken = ['gh', 'p_', 'A'.repeat(25)].join('');
+  const awsKey = ['AK', 'IA', 'IOSFODNN7EXAMPLE'].join('');
+  const connection = ['mysql://root:', 'hunter2', '@db/app'].join('');
+  assert.equal(redactSecrets(`token ${githubToken}`).includes(githubToken), false);
+  assert.equal(redactSecrets(`key ${awsKey} here`).includes(awsKey), false);
+  assert.match(redactSecrets(connection), /mysql:\/\/\*\*\*:\*\*\*@/);
+});
+
+test('secret redaction normalizes Unicode before matching credential prefixes', () => {
+  const fullWidthGithub = 'ｇｈｐ_' + 'Ａ'.repeat(24);
+  const fullWidthBearer = 'Ｂｅａｒｅｒ ' + 'Ａ'.repeat(20);
+  const extracted = extractReferences(`${fullWidthGithub} ${fullWidthBearer} service lambda`);
+  assert.ok(extracted.references_redacted >= 2);
+  assert.equal(extracted.references.some((term) => term.startsWith('ghp_')), false);
+  assert.equal(extracted.references.includes('bearer'), false);
 });
 
 test('capability is DERIVED from the tool call, never caller-asserted (Dae invariant)', () => {

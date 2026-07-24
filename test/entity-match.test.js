@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { matchEntity, ENTITY_MATCHER_VERSION, entityMatcherSha } = require('../src/entity-match');
 
 test('matcher is versioned', () => {
-  assert.equal(ENTITY_MATCHER_VERSION, 'entmatch-v0.1');
+  assert.equal(ENTITY_MATCHER_VERSION, 'entmatch-v0.2');
   assert.match(entityMatcherSha(), /^[a-f0-9]{64}$/);
 });
 

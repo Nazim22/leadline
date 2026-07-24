@@ -7,7 +7,7 @@ const { deriveCapability, CAPABILITIES, CAPABILITY_MAP_VERSION, capabilityMapSha
 const bash = (command) => deriveCapability({ provider: 'bash', name: 'bash', args: { command } });
 
 test('capability enum is closed and versioned', () => {
-  assert.equal(CAPABILITY_MAP_VERSION, 'cap-v0.1');
+  assert.equal(CAPABILITY_MAP_VERSION, 'cap-v0.2');
   assert.deepEqual([...CAPABILITIES].sort(), [
     'historical.decision_recall', 'repository.commit_state', 'repository.current_bytes',
     'runtime.health_probe', 'runtime.test_run', 'structural.complete_callers',
@@ -51,9 +51,9 @@ test('git read commands are repository.commit_state', () => {
   assert.equal(bash('git rev-parse HEAD'), 'repository.commit_state');
 });
 
-test('graph tools are structural; gbrain recall is historical; other gbrain tools are not', () => {
-  assert.equal(deriveCapability({ provider: 'mcp__graphify-cstore__query_graph', name: 'query_graph', args: {} }), 'structural.complete_callers');
-  assert.equal(deriveCapability({ provider: 'mcp__code-review-graph__get_impact_radius_tool', name: 'x', args: {} }), 'structural.complete_callers');
+test('only completeness-semantic graph tools are structural; gbrain recall is historical', () => {
+  assert.equal(deriveCapability({ provider: 'mcp__graphify-cstore__query_graph', name: 'query_graph', args: {} }), null);
+  assert.equal(deriveCapability({ provider: 'mcp__code-review-graph__get_impact_radius_tool', name: 'get_impact_radius_tool', args: {} }), 'structural.complete_callers');
   assert.equal(deriveCapability({ provider: 'mcp__gbrain__query', name: 'query', args: {} }), 'historical.decision_recall');
   assert.equal(deriveCapability({ provider: 'mcp__gbrain__put_page', name: 'put_page', args: {} }), null);
 });

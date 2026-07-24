@@ -6,7 +6,8 @@ const path = require('node:path');
 const { canonicalize } = require('./receipts');
 const { validateEvidenceReceipt } = require('./evidence');
 const { requiredCapabilities } = require('./authority');
-const { matchEntity } = require('./entity-match');
+const { CAPABILITY_MAP_VERSION, capabilityMapSha } = require('./capability');
+const { ENTITY_MATCHER_VERSION, entityMatcherSha, matchEntity } = require('./entity-match');
 
 // Evidence-contact receipts carry observed_at at the top level (not under freshness).
 // Order (per Item 2): (1) parse observed_at; invalid → not fresh. (2) a FUTURE observed_at
@@ -24,6 +25,19 @@ function receiptFreshAtFinalization(receipt, rule, now) {
   return (now.valueOf() - observed) / 1000 <= rule.freshness.max_age_seconds;
 }
 
+function normalizeOverrideProvenance(value, now) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+      || Object.keys(value).sort().join('\u0000') !== ['actor', 'at', 'reason'].join('\u0000')
+      || typeof value.actor !== 'string' || value.actor.trim().length === 0
+      || typeof value.reason !== 'string' || value.reason.trim().length === 0
+      || typeof value.at !== 'string') {
+    throw new TypeError('invalid override provenance');
+  }
+  const at = Date.parse(value.at);
+  if (!Number.isFinite(at) || at > now.valueOf()) throw new TypeError('invalid override provenance');
+  return Object.freeze({ actor: value.actor, reason: value.reason, at: new Date(at).toISOString() });
+}
+
 // First failing gate for a considered receipt, in strict order (Stage 1.2). Authority is now
 // capability-based (derived, never provider-asserted); entity matching is the conservative
 // multi-token matcher. Returns the decision plus the matchEntity explanation for the audit trail.
@@ -32,14 +46,24 @@ function receiptDisposition(receipt, rule, requiredCaps, entity, sessionId, turn
   let decision;
   if (receipt.session_id !== sessionId || receipt.turn_id !== turnId) decision = 'wrong_scope';
   else if (Date.parse(receipt.timestamp) > now.valueOf()) decision = 'future_timestamp';
-  // capability null (unknown) is never in requiredCaps => wrong_capability. Enforces the core invariant.
+  // capability null (unknown) is never in requiredCaps => wrong_capability.
   else if (!requiredCaps.includes(receipt.capability)) decision = 'wrong_capability';
-  else if (receipt.failure !== 'none') decision = 'empty_error';
+  // Unknown observations cannot become ambiguous merely because they are old/truncated.
+  // Reject them before relevance/freshness, while preserving negative runtime observations.
+  else if (receipt.outcome_verdict === 'unknown' && receipt.execution_status === 'failure') decision = 'execution_failed';
+  else if (receipt.outcome_verdict === 'unknown' && receipt.execution_status === 'unknown') decision = 'execution_unknown';
+  else if (receipt.outcome_verdict === 'unknown') decision = 'outcome_unknown';
+  else if (receipt.outcome_verdict === 'positive' && receipt.execution_status === 'failure') decision = 'execution_failed';
+  else if (receipt.outcome_verdict === 'positive' && receipt.execution_status === 'unknown') decision = 'execution_unknown';
   else if (!match.matched && !receipt.references_truncated) decision = 'entity_mismatch';
   // A non-match against a capped reference set is ambiguity, not a clean miss.
   else if (!match.matched && receipt.references_truncated) decision = 'truncated';
   else if (!receiptFreshAtFinalization(receipt, rule, now)) decision = 'stale';
-  else decision = 'supporting';
+  // Negative polarity is preserved even when the host operation exits non-zero: a failed
+  // health probe can contradict "is live" when it is authoritative, relevant, scoped, and fresh.
+  else if (receipt.outcome_verdict === 'negative') decision = 'contradicting';
+  else if (receipt.execution_status === 'success' && receipt.outcome_verdict === 'positive') decision = 'supporting';
+  else decision = 'outcome_unknown';
   return { decision, match_explanation: match };
 }
 
@@ -51,7 +75,9 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
     throw new TypeError('detectorResult is invalid');
   }
   if (!Array.isArray(evidenceReceipts)) throw new TypeError('evidenceReceipts must be an array');
-  if (!policy || policy.mode !== 'shadow' || !policy.families) throw new TypeError('finalization requires a shadow authority policy');
+  if (!policy || policy.mode !== 'shadow' || !policy.families || typeof policy.policy_version !== 'string') {
+    throw new TypeError('finalization requires a versioned shadow authority policy');
+  }
   if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) throw new TypeError('overrides must be an object map');
   if (!(now instanceof Date) || !Number.isFinite(now.valueOf())) throw new TypeError('now must be a valid Date');
   evidenceReceipts.forEach(validateEvidenceReceipt);
@@ -76,6 +102,7 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
         return { evidence_id: receipt.evidence_id, decision, match_explanation: matchExplanation };
       });
       const supportingIds = dispositions.filter((item) => item.decision === 'supporting').map((item) => item.evidence_id);
+      const contradictingIds = dispositions.filter((item) => item.decision === 'contradicting').map((item) => item.evidence_id);
       const override = Object.prototype.hasOwnProperty.call(overrides, obligation.claim_id)
         ? overrides[obligation.claim_id] : null;
 
@@ -85,9 +112,12 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
       if (override != null) {
         status = 'supported';
         matchMethod = 'override';
-        overrideProvenance = override;
+        overrideProvenance = normalizeOverrideProvenance(override, now);
       } else if (supportingIds.length > 0) {
-        status = 'supported';
+        status = contradictingIds.length > 0 ? 'conflicted' : 'supported';
+        matchMethod = 'capability_match';
+      } else if (contradictingIds.length > 0) {
+        status = 'contradicted';
         matchMethod = 'capability_match';
       } else if (dispositions.some((item) => item.decision === 'stale' || item.decision === 'truncated')) {
         status = 'ambiguous';
@@ -104,9 +134,10 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
         entity: obligation.entity,
         candidate_evidence_ids: considered.map((receipt) => receipt.evidence_id),
         supporting_evidence_ids: supportingIds,
+        contradicting_evidence_ids: contradictingIds,
         dispositions,
         match_method: matchMethod,
-        fresh_at_finalization: supportingIds.length > 0,
+        fresh_at_finalization: supportingIds.length > 0 || contradictingIds.length > 0,
         status,
         override_provenance: overrideProvenance,
       });
@@ -114,11 +145,13 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
   }
 
   const supported = evaluations.filter((item) => item.status === 'supported').length;
+  const contradicted = evaluations.filter((item) => item.status === 'contradicted').length;
+  const conflicted = evaluations.filter((item) => item.status === 'conflicted').length;
   const unsupported = evaluations.filter((item) => item.status === 'unsupported').length;
   const ambiguous = evaluations.filter((item) => item.status === 'ambiguous').length;
   const notEvaluated = detectorResult.status === 'ok' ? 0 : detectorResult.candidate_count || 0;
   const core = {
-    schema_version: '1.0',
+    schema_version: '2.0',
     completion_id: completionId,
     // Dae mandatory patch: the scope enforced at runtime must also be recorded and hashed into
     // enforcement_id, so the artifact discloses the exact session/turn it was evaluated under.
@@ -126,13 +159,22 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
     turn_id: turnId,
     mode: 'shadow',
     action: 'log_only',
+    authority_policy_version: policy.policy_version,
+    authority_policy_sha256: crypto.createHash('sha256').update(canonicalize(policy)).digest('hex'),
+    capability_map_version: CAPABILITY_MAP_VERSION,
+    capability_map_blob_sha256: capabilityMapSha(),
+    entity_matcher_version: ENTITY_MATCHER_VERSION,
+    entity_matcher_blob_sha256: entityMatcherSha(),
     detector_status: detectorResult.status,
     detector_failure: detectorResult.failure || null,
     detector_fingerprint: detectorResult.detector_fingerprint,
     model_identity: detectorResult.model_identity,
     evaluated_at: now.toISOString(),
     obligations: evaluations,
-    summary: { total: evaluations.length, supported, unsupported, ambiguous, not_evaluated: notEvaluated },
+    summary: {
+      total: evaluations.length, supported, contradicted, conflicted, unsupported, ambiguous,
+      not_evaluated: notEvaluated,
+    },
   };
   return {
     ...core,
@@ -141,10 +183,19 @@ function evaluateFinalization({ completionId, sessionId, turnId, detectorResult,
 }
 
 function appendFinalizationReport(file, report) {
-  if (!report || report.schema_version !== '1.0' || report.mode !== 'shadow' || report.action !== 'log_only'
-      || typeof report.enforcement_id !== 'string' || !Array.isArray(report.obligations)) {
-    throw new TypeError('invalid finalization report');
+  if (!report || report.schema_version !== '2.0' || report.mode !== 'shadow' || report.action !== 'log_only'
+      || typeof report.enforcement_id !== 'string' || !Array.isArray(report.obligations)
+      || typeof report.authority_policy_version !== 'string'
+      || !/^[a-f0-9]{64}$/u.test(report.authority_policy_sha256)
+      || report.capability_map_version !== CAPABILITY_MAP_VERSION
+      || report.capability_map_blob_sha256 !== capabilityMapSha()
+      || report.entity_matcher_version !== ENTITY_MATCHER_VERSION
+      || report.entity_matcher_blob_sha256 !== entityMatcherSha()) {
+    throw new TypeError('invalid finalization report fingerprint');
   }
+  const { enforcement_id: enforcementId, ...core } = report;
+  const expectedId = `enforcement-${crypto.createHash('sha256').update(canonicalize(core)).digest('hex').slice(0, 24)}`;
+  if (enforcementId !== expectedId) throw new TypeError('invalid finalization report identity');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, `${JSON.stringify(report)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'a' });
 }

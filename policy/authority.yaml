@@ -1,8 +1,9 @@
-# Leadline Stage 1.2 authority policy. Shadow/log-only: this policy cannot block.
-# Authority is a DERIVED capability (src/capability.js), never a caller-asserted provider.
+# Leadline LL-1 authority policy. Shadow/log-only: this policy cannot block.
+# Authority requires a derived capability plus successful execution and a positive,
+# claim-independent capability outcome. Unknown/negative outcomes can never support.
 # families carry tier + freshness only; capability_requirements map each claim pattern to the
 # capabilities that authoritatively satisfy it.
-policy_version: authority-v0.2
+policy_version: authority-v0.3
 mode: shadow
 
 families:

@@ -27,16 +27,20 @@ const TOOL_CALLS = {
   test: { provider: 'bash', name: 'bash', args: { command: 'npm test' } }, // runtime.test_run
   read: { provider: 'read', name: 'read', args: { file: 'src/x.js' } }, // repository.current_bytes
   gbrain: { provider: 'mcp__gbrain__query', name: 'query', args: { q: 'x' } }, // historical.decision_recall
-  graph: { provider: 'mcp__graphify-cstore__query_graph', name: 'query_graph', args: { q: 'x' } }, // structural.complete_callers
+  graph: { provider: 'mcp__graphify-cstore__get_callers', name: 'get_callers', args: { symbol: 'x' } }, // structural.complete_callers
 };
 
 function evidence({
   kind = 'health', value = `${ENTITY} is live`, observed_at, now,
   session_id = 'sess-1', turn_id = 'turn-1',
 }) {
+  const result = { value, observed_at };
+  if (kind === 'health') Object.assign(result, { exit_code: 0, http_status: 200 });
+  else if (kind === 'test') result.exit_code = 0;
+  else result.is_error = false;
   return createEvidenceContactReceipt({
     session_id, turn_id, tool_call_id: `tc-${session_id}-${turn_id}-${kind}-${observed_at}`,
-    toolCall: TOOL_CALLS[kind], result: { value, observed_at }, now,
+    toolCall: TOOL_CALLS[kind], result, now,
   });
 }
 
@@ -44,6 +48,7 @@ const SCOPE = { sessionId: 'sess-1', turnId: 'turn-1' };
 
 test('authority policy is strict, shadow-only, and maps claim patterns to capabilities', () => {
   const policy = loadAuthorityPolicy(policyPath);
+  assert.equal(policy.policy_version, 'authority-v0.3');
   assert.equal(policy.mode, 'shadow');
   assert.deepEqual(Object.keys(policy.families).sort(), ['historical', 'repository', 'runtime', 'structural']);
   assert.deepEqual(requiredCapabilities(policy, 'runtime-live'), ['runtime.health_probe']);
@@ -197,6 +202,24 @@ test('an override forces supported with logged provenance even when no contact s
   assert.deepEqual(report.obligations[0].override_provenance, provenance);
 });
 
+test('override authority requires exact, time-valid provenance', () => {
+  const common = {
+    completionId: 'turn-override-invalid', ...SCOPE, detectorResult, evidenceReceipts: [],
+    policy: loadAuthorityPolicy(policyPath), now: new Date('2026-07-23T05:10:00.000Z'),
+  };
+  assert.throws(
+    () => evaluateFinalization({ ...common, overrides: { 'claim-abc123': { actor: 'caller' } } }),
+    /override provenance/,
+  );
+  assert.throws(
+    () => evaluateFinalization({
+      ...common,
+      overrides: { 'claim-abc123': { actor: 'nazz', reason: 'manual', at: '2026-07-23T05:11:00.000Z' } },
+    }),
+    /override provenance/,
+  );
+});
+
 test('detector operational failure is logged as degraded, not an unsupported claim', () => {
   const report = evaluateFinalization({
     completionId: 'turn-2', ...SCOPE,
@@ -221,6 +244,10 @@ test('finalization reports append without truncation at mode 0600', () => {
   const file = path.join(dir, 'finalization.jsonl');
   appendFinalizationReport(file, report);
   appendFinalizationReport(file, report);
+  assert.throws(
+    () => appendFinalizationReport(file, { ...report, authority_policy_sha256: '0'.repeat(64) }),
+    /identity|fingerprint/,
+  );
   assert.equal(fs.readFileSync(file, 'utf8').trim().split('\n').length, 2);
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
 });

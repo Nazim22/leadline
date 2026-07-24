@@ -3,15 +3,33 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { canonicalize, hashValue, nonempty, parseDate } = require('./receipts');
-const { deriveCapability } = require('./capability');
+const {
+  CAPABILITY_SET, NORMALIZER_VERSION, capabilityMapSha, normalizeEvidenceContact,
+} = require('./capability');
+const { extractReferenceTerms } = require('./entity-match');
 
 // Contact-time failures are operational only. wrong_source/irrelevant/stale are CLAIM-relative
 // and belong to the finalization link step, never to an evidence-contact receipt.
 const FAILURES = new Set(['none', 'empty', 'error']);
 const EVIDENCE_KEYS = Object.freeze([
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
-  'capability', 'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
+  'capability', 'capability_rule_id', 'execution_status', 'execution_reason', 'exit_code', 'is_error',
+  'http_status', 'outcome_verdict', 'outcome_reason', 'normalizer_version', 'normalizer_blob_sha256',
+  'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
   'references', 'references_redacted', 'references_truncated', 'failure',
+]);
+const EXECUTION_STATUSES = new Set(['success', 'failure', 'unknown']);
+const EXECUTION_REASONS = new Set([
+  'error_field', 'is_error_true', 'exit_code_nonzero', 'exit_code_zero', 'is_error_false',
+  'http_status_observed', 'status_missing',
+]);
+const OUTCOME_VERDICTS = new Set(['positive', 'negative', 'unknown']);
+const OUTCOME_REASONS = new Set([
+  'unknown_capability', 'http_2xx', 'http_error_status', 'http_indeterminate_status',
+  'http_status_missing', 'probe_exit_zero', 'probe_exit_nonzero', 'execution_status_missing',
+  'test_exit_zero', 'test_exit_nonzero', 'test_exit_missing', 'execution_failed',
+  'structural_truncated', 'nonempty_result', 'empty_result', 'pct_running', 'pct_stopped',
+  'pct_status_unknown',
 ]);
 
 // Known secret shapes masked out of tool OUTPUT before it becomes a stored reference.
@@ -28,7 +46,9 @@ const CONNECTION_CREDENTIALS = /(\w+):\/\/[^\s:@/]+:[^\s@/]+@/gu;
 
 // Sequential scrub so overlapping shapes (e.g. Bearer wrapping a JWT) are consumed once, with a count.
 function scrubSecrets(text) {
-  let redacted = text;
+  // Normalize compatibility forms before matching. Otherwise full-width/confusable
+  // credential prefixes survive redaction and are normalized into secrets downstream.
+  let redacted = String(text).normalize('NFKC');
   let redactedCount = 0;
   for (const pattern of SECRET_PATTERNS) {
     redacted = redacted.replace(pattern, () => { redactedCount += 1; return ' '; });
@@ -57,9 +77,7 @@ function extractReferences(value) {
   }
   if (typeof text !== 'string') return { references: [], references_redacted: 0, references_truncated: false };
   const { text: redacted, redactedCount } = scrubSecrets(text);
-  const identifiers = redacted.match(/[A-Za-z_][\w.-]{2,}/gu) || [];
-  const counts = redacted.match(/\b\d+\/\d+\b/gu) || [];
-  const set = new Set([...identifiers, ...counts].map((term) => term.toLocaleLowerCase()));
+  const set = new Set(extractReferenceTerms(redacted));
   let entropyDropped = 0;
   const kept = [];
   for (const term of set) {
@@ -82,15 +100,32 @@ function validateEvidenceReceipt(receipt) {
     throw new TypeError('invalid evidence receipt: exact object required');
   }
   const strings = ['evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name', 'args_sha256', 'result_hash'];
-  if (receipt.schema_version !== '1.0' || strings.some((field) => typeof receipt[field] !== 'string' || receipt[field].length === 0)) {
+  if (receipt.schema_version !== '2.0' || strings.some((field) => typeof receipt[field] !== 'string' || receipt[field].length === 0)) {
     throw new TypeError('invalid evidence receipt: missing required identity fields');
   }
   if (!/^evidence-[a-f0-9]{24}$/u.test(receipt.evidence_id)
       || !/^[a-f0-9]{64}$/u.test(receipt.args_sha256) || !/^[a-f0-9]{64}$/u.test(receipt.result_hash)) {
     throw new TypeError('invalid evidence receipt: malformed hash identity');
   }
-  if (receipt.capability !== null && (typeof receipt.capability !== 'string' || receipt.capability.length === 0)) {
-    throw new TypeError('invalid evidence receipt: capability must be null or a non-empty string');
+  if (receipt.capability !== null && !CAPABILITY_SET.has(receipt.capability)) {
+    throw new TypeError('invalid evidence receipt: capability must be null or a known capability');
+  }
+  if (typeof receipt.capability_rule_id !== 'string' || receipt.capability_rule_id.length === 0
+      || !EXECUTION_STATUSES.has(receipt.execution_status) || !EXECUTION_REASONS.has(receipt.execution_reason)
+      || !OUTCOME_VERDICTS.has(receipt.outcome_verdict) || !OUTCOME_REASONS.has(receipt.outcome_reason)
+      || receipt.normalizer_version !== NORMALIZER_VERSION
+      || receipt.normalizer_blob_sha256 !== capabilityMapSha()) {
+    throw new TypeError('invalid evidence receipt: contact normalization fields');
+  }
+  if (receipt.exit_code !== null && !Number.isInteger(receipt.exit_code)) {
+    throw new TypeError('invalid evidence receipt: exit_code');
+  }
+  if (receipt.is_error !== null && typeof receipt.is_error !== 'boolean') {
+    throw new TypeError('invalid evidence receipt: is_error');
+  }
+  if (receipt.http_status !== null && (!Number.isInteger(receipt.http_status)
+      || receipt.http_status < 100 || receipt.http_status > 599)) {
+    throw new TypeError('invalid evidence receipt: http_status');
   }
   if (!Array.isArray(receipt.arg_keys) || !receipt.arg_keys.every((key) => typeof key === 'string' && key.length > 0)
       || !Array.isArray(receipt.references) || !receipt.references.every((term) => typeof term === 'string' && term.length > 0)) {
@@ -124,31 +159,34 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
   }
   if (!result || typeof result !== 'object' || Array.isArray(result)) throw new TypeError('result is invalid');
   if (!(now instanceof Date) || !Number.isFinite(now.valueOf())) throw new TypeError('now must be a valid Date');
-  // Capability is DERIVED from the tool call, never caller-asserted (Dae's core invariant).
-  // Unknown => null, and a null capability can never satisfy a claim at the link step.
-  const capability = deriveCapability({ provider: toolCall.provider, name: toolCall.name, args: toolCall.args });
+  // One frozen, claim-independent normalizer is shared by live contact creation and replay.
+  const normalized = normalizeEvidenceContact(toolCall, result);
 
   const observed = result.observed_at == null ? null : parseDate(result.observed_at, 'result.observed_at');
-  const resultNonempty = result.error == null && nonempty(result.value);
+  const hasError = result.error != null && result.error !== false && result.error !== '';
+  const resultNonempty = !hasError && nonempty(result.value);
   let failure = 'none';
-  if (result.error != null) failure = 'error';
+  if (normalized.execution_status === 'failure') failure = 'error';
   else if (!resultNonempty) failure = 'empty';
 
-  const { references, references_redacted: referencesRedacted, references_truncated: referencesTruncated } = extractReferences(result.value);
+  // Operational errors can contain the only target reference (for example a connection
+  // refusal naming a service). Redact and index both value and error without storing either.
+  const referenceSource = !hasError ? result.value : [result.value, String(result.error)];
+  const { references, references_redacted: referencesRedacted, references_truncated: referencesTruncated } = extractReferences(referenceSource);
   const core = {
-    schema_version: '1.0',
+    schema_version: '2.0',
     session_id,
     turn_id,
     tool_call_id,
     provider: toolCall.provider,
     tool_name: toolCall.name,
     // Derived (not caller-asserted) capability authority; capability-based satisfaction is decided at the link step.
-    capability,
+    ...normalized,
     args_sha256: hashValue(toolCall.args),
     arg_keys: [...Object.keys(toolCall.args)].sort(),
     timestamp: now.toISOString(),
     observed_at: observed ? observed.toISOString() : null,
-    result_hash: hashValue(result.error == null ? result.value : { error: String(result.error) }),
+    result_hash: hashValue(!hasError ? result.value : { error: String(result.error) }),
     result_nonempty: resultNonempty,
     references,
     references_redacted: referencesRedacted,

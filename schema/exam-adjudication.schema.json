@@ -68,7 +68,7 @@
     },
     "grok": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "x-ai/grok-4.5" }, "model_identity": { "const": "x-ai/grok-4.5" } } }] },
     "kimi": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "moonshotai/kimi-k3" }, "model_identity": { "const": "kimi-k3-20260715" } } }] },
-    "gemini": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "google/gemini-3.5-flash" }, "model_identity": { "const": "google/gemini-3.5-flash" } } }] },
+    "gemini": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "google/gemini-3.6-flash" }, "model_identity": { "const": "google/gemini-3.6-flash" } } }] },
     "claim": {
       "type": "object", "additionalProperties": false,
       "required": ["span_exact_text", "family", "entity"],

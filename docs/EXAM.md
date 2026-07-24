@@ -101,6 +101,14 @@ node scripts/label-corpus.js \
 
 Malformed JSON, schema violations, non-source spans, model mismatches, and transport failures are explicit failed attempts. No completion is dropped. Two failed attempts produce `status:"operational_failure"`, `claims:null`, and exact counters. Output rows record both the request model and verified response identity.
 
+### Pre-publication security backlog
+
+These items do not gate the single-shot operator-run exam on the operator's own host, but are hard requirements before publishing the harness for use across a hostile local-user boundary:
+
+- Replace the `/proc/self/fd` component walk with a small audited `openat2(2)` wrapper using `RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS|RESOLVE_NO_MAGICLINKS`, then rerun the deterministic ancestor-swap suite.
+- Extend immutable load-time provenance to external package code (`ajv`, `yaml`, and transitive dependencies) through a verified lockfile/content-addressed install rather than relying on the operator-controlled local `node_modules` tree.
+- Define and test behavior under a same-UID/root adversary that can inspect process descriptors, mutate Git refs/objects, or ptrace the scorer; tonight's local threat model intentionally excludes an operator attacking their own process.
+
 ### Frozen labeling rubric
 
 A scored claim is only:
@@ -145,7 +153,7 @@ node scripts/adjudicate-union.js \
   --expected-tree "$LOCKED_EXAM_TREE"
 ```
 
-The adjudicator is pinned to `google/gemini-3.5-flash`; lane identities remain Grok 4.5 and Kimi K3. All adjudication requests use the same strict no-fallback routing and exact response-identity checks as labeling.
+The adjudicator is pinned to `google/gemini-3.6-flash`; lane identities remain Grok 4.5 and Kimi K3. All adjudication requests use the same strict no-fallback routing and exact response-identity checks as labeling.
 
 ## 4. All-completion completeness sweep
 

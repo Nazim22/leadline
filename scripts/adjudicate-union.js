@@ -20,8 +20,8 @@ const {
 const ROOT = path.join(__dirname, '..');
 const UNION_SEED = 'leadline-exam-v2-union-seed-20260724';
 const ADJUDICATOR_MODEL = Object.freeze({
-  request_model: 'google/gemini-3.5-flash',
-  model_identity: 'google/gemini-3.5-flash',
+  request_model: 'google/gemini-3.6-flash',
+  model_identity: 'google/gemini-3.6-flash',
 });
 const LANE_MODELS = Object.freeze({
   grok: Object.freeze({ request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' }),

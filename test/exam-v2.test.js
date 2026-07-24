@@ -81,7 +81,10 @@ test('v2 rubric hash freezes exactly five synthetic anchors and every launch des
     { request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
     { request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
   ]);
-  assert.equal(ADJUDICATOR_MODEL.request_model.startsWith('google/'), true);
+  assert.deepEqual(ADJUDICATOR_MODEL, {
+    request_model: 'google/gemini-3.6-flash',
+    model_identity: 'google/gemini-3.6-flash',
+  });
   assert.equal(typeof UNION_SEED, 'string');
   assert.equal(MODEL_RESPONSE_SCHEMA.properties.schema_version.const, 2);
 });

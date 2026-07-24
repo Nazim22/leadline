@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/exam-label.schema.json",
+  "title": "Leadline detector-gold label row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rubric_version",
+    "rubric_sha256",
+    "completion_id",
+    "labeler",
+    "status",
+    "attempts",
+    "invalid_attempts",
+    "operational_failure_attempts",
+    "claims",
+    "failure"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "rubric_version": { "const": "detector-gold-v0.1" },
+    "rubric_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "completion_id": { "type": "string", "pattern": "^completion-[a-f0-9]{24}$" },
+    "labeler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "model_identity"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$" },
+        "model_identity": {
+          "enum": ["deepseek/deepseek-v4-pro", "x-ai/grok-4.5", "human"]
+        }
+      }
+    },
+    "status": { "enum": ["ok", "operational_failure"] },
+    "attempts": { "type": "integer", "minimum": 1, "maximum": 2 },
+    "invalid_attempts": { "type": "integer", "minimum": 0, "maximum": 2 },
+    "operational_failure_attempts": { "type": "integer", "minimum": 0, "maximum": 2 },
+    "claims": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["span_exact_text", "family", "entity"],
+            "properties": {
+              "span_exact_text": { "type": "string", "minLength": 1 },
+              "family": { "enum": ["historical", "structural", "repository", "runtime"] },
+              "entity": { "type": "string", "minLength": 1 },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "relevant_evidence_contact_visible": { "enum": ["yes", "no", "uncertain"] }
+            }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "failure": { "enum": [null, "invalid_response", "request_failed", "model_identity_mismatch"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "ok" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "claims": { "type": "array" },
+          "failure": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "claims": { "type": "null" },
+          "failure": { "type": "string" }
+        }
+      }
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "status": { "const": "ok" },
+            "attempts": { "const": 1 },
+            "invalid_attempts": { "const": 0 },
+            "operational_failure_attempts": { "const": 0 }
+          }
+        },
+        {
+          "properties": {
+            "status": { "const": "ok" },
+            "attempts": { "const": 2 },
+            "invalid_attempts": { "enum": [0, 1] },
+            "operational_failure_attempts": { "const": 1 }
+          }
+        },
+        {
+          "properties": {
+            "status": { "const": "operational_failure" },
+            "attempts": { "const": 2 },
+            "invalid_attempts": { "enum": [0, 1, 2] },
+            "operational_failure_attempts": { "const": 2 }
+          }
+        }
+      ]
+    }
+  ]
+}

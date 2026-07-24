@@ -436,7 +436,7 @@ function parseArgs(argv) {
   const values = {};
   for (let index = 0; index < argv.length; index += 2) {
     const flag = argv[index];
-    if (!/^--[a-z][a-z-]*$/u.test(flag || '') || Object.hasOwn(values, flag.slice(2))) throw new TypeError(`invalid or duplicate option: ${flag}`);
+    if (!/^--[a-z][a-z0-9-]*$/u.test(flag || '') || Object.hasOwn(values, flag.slice(2))) throw new TypeError(`invalid or duplicate option: ${flag}`);
     values[flag.slice(2)] = argv[index + 1];
   }
   const required = ['corpus', 'context', 'lane-a', 'lane-b', 'labeling-summary', 'expected-labeling-summary-sha256', 'output', 'repo', 'expected-tree'];

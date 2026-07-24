@@ -23,12 +23,13 @@ const {
   assertPathSeparation,
   buildUnion,
   finalizeCandidate,
+  main: adjudicateMain,
   protocolDescriptor,
   runAdjudication,
   seededCandidateOrder,
   structuredRequest,
 } = require('../scripts/adjudicate-union');
-const { scoreExam } = require('../scripts/score-exam');
+const { main: scoreMain, scoreExam } = require('../scripts/score-exam');
 
 const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const completionId = 'completion-111111111111111111111111';
@@ -122,6 +123,42 @@ test('all outbound response-schema properties are explicitly typed with redundan
   assert.equal(MODEL_RESPONSE_SCHEMA.properties.claims.items.properties.family.type, 'string');
   assert.equal(MODEL_RESPONSE_SCHEMA.properties.claims.items.properties.relevant_evidence_contact_visible.type, 'string');
   assert.equal(VOTE_RESPONSE_SCHEMA.properties.decision.type, 'string');
+});
+
+test('adjudicator main accepts every documented CLI flag including SHA-256 names', async () => {
+  await assert.rejects(() => adjudicateMain([
+    '--corpus', '/private/exam/corpus.jsonl',
+    '--context', '/private/exam/context.jsonl',
+    '--lane-a', '/private/exam/labels/lane-a.labels.jsonl',
+    '--lane-b', '/private/exam/labels/lane-b.labels.jsonl',
+    '--labeling-summary', '/private/exam/labels/labeling-summary.json',
+    '--expected-labeling-summary-sha256', 'a'.repeat(64),
+    '--output', '/private/exam/exam-adjudication.json',
+    '--repo', '/definitely/missing/leadline-ll4d-adjudicator',
+    '--expected-tree', 'b'.repeat(40),
+  ]), { code: 'ENOENT' });
+});
+
+test('scorer main accepts every documented CLI flag including SHA-256 names', async () => {
+  await assert.rejects(() => scoreMain([
+    '--corpus', '/private/exam/corpus.jsonl',
+    '--context', '/private/exam/context.jsonl',
+    '--artifacts', '/private/exam/replay-artifacts.jsonl',
+    '--expected-artifact-sha256', 'a'.repeat(64),
+    '--manifest', '/private/exam/provenance.json',
+    '--coverage-summary', '/private/exam/coverage-summary.json',
+    '--lane-a', '/private/exam/labels/lane-a.labels.jsonl',
+    '--lane-b', '/private/exam/labels/lane-b.labels.jsonl',
+    '--labeling-summary', '/private/exam/labels/labeling-summary.json',
+    '--expected-labeling-summary-sha256', 'b'.repeat(64),
+    '--adjudication', '/private/exam/exam-adjudication.json',
+    '--expected-adjudication-sha256', 'c'.repeat(64),
+    '--expected-tree', 'd'.repeat(40),
+    '--output', '/private/exam/exam-score.json',
+    '--gold', '/private/exam/gold.jsonl',
+    '--queue', '/private/exam/adjudication-queue.jsonl',
+    '--repo', '/definitely/missing/leadline-ll4d-scorer',
+  ]), { code: 'ENOENT' });
 });
 
 test('lane requests are concurrent and enforce strict schema, parameters, no fallback, and response identity', async () => {

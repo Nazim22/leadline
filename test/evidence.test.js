@@ -11,7 +11,7 @@ const {
 const EVIDENCE_KEYS = [
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
   'capability', 'capability_rule_id', 'execution_status', 'execution_reason', 'exit_code', 'is_error',
-  'http_status', 'outcome_verdict', 'outcome_reason', 'normalizer_version', 'normalizer_blob_sha256',
+  'http_status', 'executed_test_count', 'outcome_verdict', 'outcome_reason', 'normalizer_version', 'normalizer_blob_sha256',
   'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
   'references', 'references_redacted', 'references_truncated', 'failure',
 ].sort();
@@ -28,7 +28,8 @@ test('evidence-contact receipt is a frozen, exact-keys, canonically-hashed objec
   assert.equal(Object.isFrozen(receipt), true);
   assert.deepEqual(Object.keys(receipt).sort(), EVIDENCE_KEYS);
   assert.match(receipt.evidence_id, /^evidence-[a-f0-9]{24}$/);
-  assert.equal(receipt.schema_version, '2.0');
+  assert.equal(receipt.schema_version, '2.1');
+  assert.equal(receipt.executed_test_count, null);
   assert.equal(receipt.provider, 'cli-probe');
   assert.equal(receipt.tool_name, 'curl');
   assert.equal(receipt.capability, null);
@@ -88,6 +89,16 @@ test('secret redaction normalizes Unicode before matching credential prefixes', 
   assert.ok(extracted.references_redacted >= 2);
   assert.equal(extracted.references.some((term) => term.startsWith('ghp_')), false);
   assert.equal(extracted.references.includes('bearer'), false);
+});
+
+test('Bearer credential-scheme redaction is case-insensitive', () => {
+  const token = 'A'.repeat(24);
+  for (const scheme of ['bearer', 'Bearer', 'BEARER']) {
+    const extracted = extractReferences(`Authorization: ${scheme} ${token} service lambda`);
+    assert.equal(extracted.references_redacted, 1);
+    assert.equal(extracted.references.includes(scheme.toLowerCase()), false);
+    assert.equal(extracted.references.includes(token.toLowerCase()), false);
+  }
 });
 
 test('capability is DERIVED from the tool call, never caller-asserted (Dae invariant)', () => {

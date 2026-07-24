@@ -30,12 +30,13 @@ function gitStyleSha256(file) {
 
 function contact({
   id, command, provider = 'bash', name = 'bash', args, value = 'cstoregenie-app',
-  exit_code, is_error, http_status, error, truncated,
+  exit_code, is_error, http_status, executed_test_count, error, truncated,
 }) {
   const result = { value, observed_at: OBSERVED };
   if (exit_code !== undefined) result.exit_code = exit_code;
   if (is_error !== undefined) result.is_error = is_error;
   if (http_status !== undefined) result.http_status = http_status;
+  if (executed_test_count !== undefined) result.executed_test_count = executed_test_count;
   if (error !== undefined) result.error = error;
   if (truncated !== undefined) result.truncated = truncated;
   return createEvidenceContactReceipt({
@@ -161,13 +162,36 @@ test('LL-1 C2: the frozen normalizer separates host execution from capability-sp
   assert.equal(unverifiedCurl.outcome_verdict, 'unknown');
   assert.equal(unverifiedCurl.outcome_reason, 'http_status_missing');
 
-  const testsPass = contact({ id: 'test-pass', command: 'npm test', exit_code: 0 });
-  const testsFail = contact({ id: 'test-fail', command: 'npm test', exit_code: 1 });
+  const testsPass = contact({ id: 'test-pass', command: 'npm test', exit_code: 0, executed_test_count: 135 });
+  const testsFail = contact({ id: 'test-fail', command: 'npm test', exit_code: 1, executed_test_count: 10 });
   const testsUnknown = contact({ id: 'test-unknown', command: 'npm test' });
   assert.deepEqual(
     [testsPass.outcome_verdict, testsFail.outcome_verdict, testsUnknown.outcome_verdict],
     ['positive', 'negative', 'unknown'],
   );
+  assert.equal(testsPass.executed_test_count, 135);
+
+  const zeroMatch = contact({
+    id: 'test-zero-match',
+    command: "node --test --test-name-pattern='__NO_MATCH__' test/capability.test.js",
+    exit_code: 0,
+    executed_test_count: 0,
+  });
+  const emptySuite = contact({ id: 'test-empty-suite', command: 'node --test empty', exit_code: 0, executed_test_count: 0 });
+  const missingCount = contact({ id: 'test-missing-count', command: 'node --test', exit_code: 0 });
+  assert.deepEqual(
+    [zeroMatch.outcome_verdict, emptySuite.outcome_verdict, missingCount.outcome_verdict],
+    ['unknown', 'unknown', 'unknown'],
+  );
+  assert.deepEqual(
+    [zeroMatch.outcome_reason, emptySuite.outcome_reason, missingCount.outcome_reason],
+    ['executed_test_count_missing_or_zero', 'executed_test_count_missing_or_zero', 'executed_test_count_missing_or_zero'],
+  );
+  const zeroMatchReport = reportFor([zeroMatch], {
+    pattern_id: 'test-pass', family: 'runtime', entity: 'cstoregenie-app',
+  });
+  assert.equal(zeroMatchReport.obligations[0].status, 'unsupported');
+  assert.deepEqual(zeroMatchReport.obligations[0].supporting_evidence_ids, []);
 
   const read = contact({
     id: 'read-success', provider: 'read', name: 'read', args: { file: 'src/app/index.js' },
@@ -204,7 +228,7 @@ test('LL-1 W4: capability, matcher, and normalizer fingerprints bind exact sourc
   assert.notEqual(capabilityMapSha(), gitStyleBytesSha256(Buffer.concat([capabilityBytes, Buffer.from('\n// changed rule')])));
   assert.notEqual(entityMatcherSha(), gitStyleBytesSha256(Buffer.concat([entityBytes, Buffer.from('\n// changed regex')])));
   const receipt = contact({ id: 'fingerprint', command: 'npm test', exit_code: 0 });
-  assert.equal(receipt.normalizer_version, 'contact-normalizer-v0.2');
+  assert.equal(receipt.normalizer_version, 'contact-normalizer-v0.3');
   assert.equal(receipt.normalizer_blob_sha256, capabilityMapSha());
   assert.match(receipt.normalizer_blob_sha256, /^[a-f0-9]{64}$/u);
   const report = reportFor([]);

@@ -14,7 +14,7 @@ const FAILURES = new Set(['none', 'empty', 'error']);
 const EVIDENCE_KEYS = Object.freeze([
   'schema_version', 'evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name',
   'capability', 'capability_rule_id', 'execution_status', 'execution_reason', 'exit_code', 'is_error',
-  'http_status', 'outcome_verdict', 'outcome_reason', 'normalizer_version', 'normalizer_blob_sha256',
+  'http_status', 'executed_test_count', 'outcome_verdict', 'outcome_reason', 'normalizer_version', 'normalizer_blob_sha256',
   'args_sha256', 'arg_keys', 'timestamp', 'observed_at', 'result_hash', 'result_nonempty',
   'references', 'references_redacted', 'references_truncated', 'failure',
 ]);
@@ -27,7 +27,7 @@ const OUTCOME_VERDICTS = new Set(['positive', 'negative', 'unknown']);
 const OUTCOME_REASONS = new Set([
   'unknown_capability', 'http_2xx', 'http_error_status', 'http_indeterminate_status',
   'http_status_missing', 'probe_exit_zero', 'probe_exit_nonzero', 'execution_status_missing',
-  'test_exit_zero', 'test_exit_nonzero', 'test_exit_missing', 'execution_failed',
+  'executed_test_count_positive', 'executed_test_count_missing_or_zero', 'test_exit_nonzero', 'test_exit_missing', 'execution_failed',
   'structural_truncated', 'nonempty_result', 'empty_result', 'pct_running', 'pct_stopped',
   'pct_status_unknown',
 ]);
@@ -38,7 +38,7 @@ const SECRET_PATTERNS = Object.freeze([
   /gh[pousr]_[A-Za-z0-9]{20,}/gu,
   /AKIA[0-9A-Z]{16}/gu,
   /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/gu,
-  /Bearer\s+[A-Za-z0-9._-]{16,}/gu,
+  /Bearer\s+[A-Za-z0-9._-]{16,}/giu,
   /xox[baprs]-[A-Za-z0-9-]{10,}/gu,
 ]);
 // Connection strings: mask the scheme://user:pass@ credentials, keep the rest.
@@ -100,7 +100,7 @@ function validateEvidenceReceipt(receipt) {
     throw new TypeError('invalid evidence receipt: exact object required');
   }
   const strings = ['evidence_id', 'session_id', 'turn_id', 'tool_call_id', 'provider', 'tool_name', 'args_sha256', 'result_hash'];
-  if (receipt.schema_version !== '2.0' || strings.some((field) => typeof receipt[field] !== 'string' || receipt[field].length === 0)) {
+  if (receipt.schema_version !== '2.1' || strings.some((field) => typeof receipt[field] !== 'string' || receipt[field].length === 0)) {
     throw new TypeError('invalid evidence receipt: missing required identity fields');
   }
   if (!/^evidence-[a-f0-9]{24}$/u.test(receipt.evidence_id)
@@ -126,6 +126,10 @@ function validateEvidenceReceipt(receipt) {
   if (receipt.http_status !== null && (!Number.isInteger(receipt.http_status)
       || receipt.http_status < 100 || receipt.http_status > 599)) {
     throw new TypeError('invalid evidence receipt: http_status');
+  }
+  if (receipt.executed_test_count !== null
+      && (!Number.isInteger(receipt.executed_test_count) || receipt.executed_test_count < 0)) {
+    throw new TypeError('invalid evidence receipt: executed_test_count');
   }
   if (!Array.isArray(receipt.arg_keys) || !receipt.arg_keys.every((key) => typeof key === 'string' && key.length > 0)
       || !Array.isArray(receipt.references) || !receipt.references.every((term) => typeof term === 'string' && term.length > 0)) {
@@ -174,7 +178,7 @@ function createEvidenceContactReceipt({ session_id, turn_id, tool_call_id, toolC
   const referenceSource = !hasError ? result.value : [result.value, String(result.error)];
   const { references, references_redacted: referencesRedacted, references_truncated: referencesTruncated } = extractReferences(referenceSource);
   const core = {
-    schema_version: '2.0',
+    schema_version: '2.1',
     session_id,
     turn_id,
     tool_call_id,

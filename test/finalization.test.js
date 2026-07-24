@@ -36,7 +36,7 @@ function evidence({
 }) {
   const result = { value, observed_at };
   if (kind === 'health') Object.assign(result, { exit_code: 0, http_status: 200 });
-  else if (kind === 'test') result.exit_code = 0;
+  else if (kind === 'test') Object.assign(result, { exit_code: 0, executed_test_count: 1 });
   else result.is_error = false;
   return createEvidenceContactReceipt({
     session_id, turn_id, tool_call_id: `tc-${session_id}-${turn_id}-${kind}-${observed_at}`,

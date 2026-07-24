@@ -8,7 +8,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 
 const CAPABILITY_MAP_VERSION = 'cap-v0.2';
-const NORMALIZER_VERSION = 'contact-normalizer-v0.2';
+const NORMALIZER_VERSION = 'contact-normalizer-v0.3';
 
 const CAPABILITIES = Object.freeze([
   'runtime.health_probe',
@@ -295,7 +295,12 @@ function normalizedResultFields(result) {
   const isError = typeof result.is_error === 'boolean' ? result.is_error : null;
   const httpStatus = Number.isInteger(result.http_status) && result.http_status >= 100 && result.http_status <= 599
     ? result.http_status : null;
-  return { exit_code: exitCode, is_error: isError, http_status: httpStatus };
+  const executedTestCount = Number.isInteger(result.executed_test_count) && result.executed_test_count >= 0
+    ? result.executed_test_count : null;
+  // LL-1.1: test evidence trusts the adapter's structured executed-test count; free-form output is never parsed here.
+  return {
+    exit_code: exitCode, is_error: isError, http_status: httpStatus, executed_test_count: executedTestCount,
+  };
 }
 
 function executionFromResult(result) {
@@ -351,9 +356,10 @@ function outcomeFromContact(derived, execution, result) {
   }
   if (derived.capability === 'runtime.test_run') {
     if (execution.exit_code == null) return { verdict: 'unknown', reason: 'test_exit_missing' };
-    return execution.exit_code === 0
-      ? { verdict: 'positive', reason: 'test_exit_zero' }
-      : { verdict: 'negative', reason: 'test_exit_nonzero' };
+    if (execution.exit_code !== 0) return { verdict: 'negative', reason: 'test_exit_nonzero' };
+    return execution.executed_test_count > 0
+      ? { verdict: 'positive', reason: 'executed_test_count_positive' }
+      : { verdict: 'unknown', reason: 'executed_test_count_missing_or_zero' };
   }
   if (execution.status === 'unknown') return { verdict: 'unknown', reason: 'execution_status_missing' };
   // A failed read/query/traversal did not observe the opposite repository, historical,
@@ -379,6 +385,7 @@ function normalizeEvidenceContact(toolCall, result) {
     exit_code: execution.exit_code,
     is_error: execution.is_error,
     http_status: execution.http_status,
+    executed_test_count: execution.executed_test_count,
     outcome_verdict: outcome.verdict,
     outcome_reason: outcome.reason,
     normalizer_version: NORMALIZER_VERSION,

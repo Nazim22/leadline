@@ -799,6 +799,29 @@ function validateArtifactCoverage(row, corpusRow, candidates, expectedDetector =
   return true;
 }
 
+// Causal binding for label-time runtime: every blob the LABELER's execution could touch must
+// equal the current validated runtime byte-for-byte. The scorer's own artifacts
+// (scripts/score-exam.js, schema/exam-score.schema.json) are excluded from label-time equality —
+// labels never execute the scorer, and the scoring runtime is separately attested in the score
+// output. Both maps must still cover the identical path set (nothing silently missing).
+const SCORER_ONLY_PATHS = Object.freeze(['scripts/score-exam.js', 'schema/exam-score.schema.json']);
+function labelingRuntimeBound(recorded, current) {
+  if (!recorded || typeof recorded !== 'object' || Array.isArray(recorded)
+      || !exactKeys(recorded, ['commit', 'tree', 'blobs'])
+      || !/^[a-f0-9]{40}$/u.test(recorded.commit || '') || !/^[a-f0-9]{40}$/u.test(recorded.tree || '')
+      || !recorded.blobs || typeof recorded.blobs !== 'object' || Array.isArray(recorded.blobs)) {
+    return false;
+  }
+  const recordedPaths = Object.keys(recorded.blobs).sort();
+  const currentPaths = Object.keys(current.blobs).sort();
+  if (recordedPaths.join(' ') !== currentPaths.join(' ')) return false;
+  return recordedPaths.every((p) => (
+    SCORER_ONLY_PATHS.includes(p)
+      ? /^[a-f0-9]{40}$/u.test(recorded.blobs[p] || '')
+      : recorded.blobs[p] === current.blobs[p]
+  ));
+}
+
 function validateLabelingSummary({ summary, summaryText, expectedSummarySha256, corpusText, contextText, laneTexts, laneRows }) {
   if (!validatedRuntime) throw new Error('scoring runtime must be validated before labeling summary');
   if (!/^[a-f0-9]{64}$/u.test(expectedSummarySha256 || '') || sha256Text(summaryText) !== expectedSummarySha256) {
@@ -807,7 +830,7 @@ function validateLabelingSummary({ summary, summaryText, expectedSummarySha256, 
   if (!exactKeys(summary, ['schema_version', 'rubric_version', 'rubric_sha256', 'corpus_sha256', 'context_sha256', 'runtime', 'lanes'])
       || summary.schema_version !== 1 || summary.rubric_version !== RUBRIC_VERSION || summary.rubric_sha256 !== RUBRIC_SHA256
       || summary.corpus_sha256 !== sha256Text(corpusText) || summary.context_sha256 !== sha256Text(contextText)
-      || canonicalize(summary.runtime) !== canonicalize(validatedRuntime)
+      || !labelingRuntimeBound(summary.runtime, validatedRuntime)
       || !summary.lanes || typeof summary.lanes !== 'object' || Array.isArray(summary.lanes)) {
     throw new Error('labeling summary does not bind the validated rubric, inputs, and runtime');
   }

@@ -472,12 +472,24 @@ async function labelCorpus({ corpusRows, contextRows, config, apiKey, fetchFn = 
 
 function privateOutputDirectory(outputDir) {
   const resolved = path.resolve(outputDir);
-  const probe = openAnchoredParent(path.join(resolved, '.leadline-output-probe'), 'output directory');
+  if (resolved === path.parse(resolved).root) throw new Error('output directory cannot be the filesystem root');
+  const parentFd = openAnchoredDirectory(path.dirname(resolved), 'output directory parent');
+  const target = `/proc/self/fd/${parentFd}/${path.basename(resolved)}`;
+  let directoryFd;
   try {
-    const stat = fs.fstatSync(probe.parentFd);
+    try { fs.mkdirSync(target, { mode: 0o700 }); }
+    catch (error) { if (!error || error.code !== 'EEXIST') throw error; }
+    directoryFd = fs.openSync(
+      target,
+      fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW,
+    );
+    const stat = fs.fstatSync(directoryFd);
     if (!stat.isDirectory()) throw new Error(`output path is not a directory: ${resolved}`);
-    fs.fchmodSync(probe.parentFd, 0o700);
-  } finally { fs.closeSync(probe.parentFd); }
+    fs.fchmodSync(directoryFd, 0o700);
+  } finally {
+    if (directoryFd !== undefined) fs.closeSync(directoryFd);
+    fs.closeSync(parentFd);
+  }
   return resolved;
 }
 

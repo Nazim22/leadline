@@ -13,6 +13,7 @@ const {
   MATCHER_VERSION,
   PROVENANCE_PATHS: SCORING_PROVENANCE_PATHS,
   createExactTreeLoader,
+  createExactTreeSchemaFs,
   matcherDescriptor,
   matchCompletion,
   normalizeEntity,
@@ -141,6 +142,10 @@ test('exact-tree loader ignores repository pathname replacement after descriptor
   fs.mkdirSync(path.join(repo, 'schema'), { recursive: true });
   fs.writeFileSync(path.join(repo, 'src', 'dependency.js'), "module.exports = { value: 'trusted' };\n");
   fs.writeFileSync(path.join(repo, 'src', 'entry.js'), "module.exports = require('./dependency');\n");
+  fs.writeFileSync(
+    path.join(repo, 'src', 'schema-reader.js'),
+    "const fs = require('node:fs'); const path = require('node:path'); module.exports = () => fs.readFileSync(path.join(__dirname, '..', 'schema', 'probe.json'), 'utf8');\n",
+  );
   fs.writeFileSync(path.join(repo, 'schema', 'probe.json'), '{"source":"trusted"}\n');
   execFileSync('git', ['init', '-q', repo]);
   execFileSync('git', ['-C', repo, 'config', 'user.name', 'LL-3 Test']);
@@ -150,15 +155,23 @@ test('exact-tree loader ignores repository pathname replacement after descriptor
   const tree = execFileSync('git', ['-C', repo, 'rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim();
   const repoFd = openAnchoredDirectory(repo, 'repository');
   try {
-    const loader = createExactTreeLoader(`/proc/${process.pid}/fd/${repoFd}`, tree);
-    fs.renameSync(repo, path.join(root, 'trusted-held'));
+    const repoPath = `/proc/${process.pid}/fd/${repoFd}`;
+    let schemaFs;
+    const loader = createExactTreeLoader(repoPath, tree, ({ modulePath, specifier }) => (
+      modulePath === 'src/schema-reader.js' && specifier === 'node:fs' ? schemaFs : undefined
+    ));
+    schemaFs = createExactTreeSchemaFs(repoPath, loader);
+    const held = path.join(root, 'trusted-held');
+    fs.renameSync(repo, held);
     fs.mkdirSync(path.join(repo, 'src'), { recursive: true });
     fs.mkdirSync(path.join(repo, 'schema'), { recursive: true });
     fs.writeFileSync(path.join(repo, 'src', 'dependency.js'), "module.exports = { value: 'attacker' };\n");
     fs.writeFileSync(path.join(repo, 'src', 'entry.js'), "module.exports = require('./dependency');\n");
     fs.writeFileSync(path.join(repo, 'schema', 'probe.json'), '{"source":"attacker"}\n');
+    fs.writeFileSync(path.join(held, 'schema', 'probe.json'), '{"source":"mutated-checkout"}\n');
     assert.equal(loader.load('src/entry.js').value, 'trusted');
     assert.equal(JSON.parse(loader.read('schema/probe.json')).source, 'trusted');
+    assert.equal(JSON.parse(loader.load('src/schema-reader.js')()).source, 'trusted');
   } finally {
     fs.closeSync(repoFd);
   }

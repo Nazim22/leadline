@@ -161,7 +161,7 @@ function git(repoPath, args, input) {
   return execFileSync('git', ['-C', repoPath, ...args], { encoding: 'utf8', input }).trim();
 }
 
-function createExactTreeLoader(repoPath, tree) {
+function createExactTreeLoader(repoPath, tree, nativeModuleOverride = null) {
   if (!/^[a-f0-9]{40}$/u.test(tree || '')) throw new TypeError('exact-tree loader requires a full tree object ID');
   const cache = new Map();
 
@@ -208,11 +208,15 @@ function createExactTreeLoader(repoPath, tree) {
     const nativeRequire = Module.createRequire(filename);
     const moduleRecord = { exports: {}, filename, loaded: false };
     cache.set(normalized, moduleRecord);
-    const localRequire = (request) => {
-      if (request.startsWith('./') || request.startsWith('../')) {
-        return load(resolveRelative(normalized, request));
+    const localRequire = (specifier) => {
+      if (specifier.startsWith('./') || specifier.startsWith('../')) {
+        return load(resolveRelative(normalized, specifier));
       }
-      return nativeRequire(request);
+      if (nativeModuleOverride) {
+        const override = nativeModuleOverride({ modulePath: normalized, specifier });
+        if (override !== undefined) return override;
+      }
+      return nativeRequire(specifier);
     };
     try {
       const compilableSource = source.toString('utf8').replace(/^#![^\r\n]*(?:\r?\n|$)/u, '');
@@ -230,6 +234,26 @@ function createExactTreeLoader(repoPath, tree) {
   }
 
   return Object.freeze({ load, read });
+}
+
+function createExactTreeSchemaFs(repoPath, exactTree) {
+  const schemaRoot = path.resolve(repoPath, 'schema');
+  const facade = Object.create(fs);
+  Object.defineProperty(facade, 'readFileSync', {
+    enumerable: true,
+    value(file, options) {
+      if (typeof file === 'string') {
+        const resolved = path.resolve(file);
+        if (path.dirname(resolved) === schemaRoot) {
+          const bytes = exactTree.read(`schema/${path.basename(resolved)}`);
+          const encoding = typeof options === 'string' ? options : options && options.encoding;
+          return encoding ? bytes.toString(encoding) : bytes;
+        }
+      }
+      return fs.readFileSync(file, options);
+    },
+  });
+  return Object.freeze(facade);
 }
 
 function matcherDescriptor(repoPath = ROOT, requireTracked = false) {
@@ -274,7 +298,13 @@ function validateScoringCheckout(repoPath = ROOT, expectedTree) {
     if (workingBlob !== trackedBlob) throw new Error(`${runtimePath} does not match the checked-out git object`);
     blobs[runtimePath] = trackedBlob;
   }
-  const exactTree = createExactTreeLoader(repoPath, expectedTree);
+  let replayFs;
+  const exactTree = createExactTreeLoader(repoPath, expectedTree, ({ modulePath, specifier }) => (
+    modulePath === 'scripts/replay.js' && (specifier === 'node:fs' || specifier === 'fs')
+      ? replayFs
+      : undefined
+  ));
+  replayFs = createExactTreeSchemaFs(repoPath, exactTree);
   const replay = exactTree.load('scripts/replay.js');
   const claims = exactTree.load('src/claims.js');
   const claimDetector = exactTree.load('src/claim-detector.js');
@@ -1036,6 +1066,7 @@ module.exports = {
   MATCHER_VERSION,
   PROVENANCE_PATHS: SCORING_PROVENANCE_PATHS,
   createExactTreeLoader,
+  createExactTreeSchemaFs,
   help,
   main,
   matchCompletion,

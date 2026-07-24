@@ -320,9 +320,11 @@ test('label outputs and hashes are deterministic private files', async () => {
     apiKey: 'secre...ey', fetchFn: deterministicFetch().fetchFn,
     inputBytes: boundInputBytes(),
   });
-  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'leadline-labels-'));
-  fs.chmodSync(outputDir, 0o700);
+  const outputParent = fs.mkdtempSync(path.join(os.tmpdir(), 'leadline-label-parent-'));
+  const outputDir = path.join(outputParent, 'labels');
+  assert.equal(fs.existsSync(outputDir), false);
   const summary = writeLabelOutputs(outputDir, result);
+  assert.equal(fs.statSync(outputDir).mode & 0o777, 0o700);
 
   assert.deepEqual(Object.keys(summary.lanes).sort(), ['lane-a', 'lane-b']);
   for (const lane of result.lanes) {

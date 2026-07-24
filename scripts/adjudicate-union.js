@@ -8,6 +8,7 @@ const Ajv2020 = require('ajv/dist/2020');
 const {
   LABEL_RUBRIC_PROMPT,
   MODEL_RESPONSE_SCHEMA,
+  REQUEST_PROFILES,
   RUBRIC_SHA256,
   RUBRIC_VERSION,
   canonicalize: exportedCanonicalize,
@@ -22,14 +23,15 @@ const UNION_SEED = 'leadline-exam-v2-union-seed-20260724';
 const ADJUDICATOR_MODEL = Object.freeze({
   request_model: 'google/gemini-3.6-flash',
   model_identity: 'google/gemini-3.6-flash',
+  request_profile: 'deterministic-v1',
 });
 const LANE_MODELS = Object.freeze({
-  grok: Object.freeze({ request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' }),
-  kimi: Object.freeze({ request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' }),
+  grok: Object.freeze({ request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' }),
+  kimi: Object.freeze({ request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' }),
 });
 const FAMILIES = Object.freeze(['historical', 'structural', 'repository', 'runtime']);
 const VOTES = Object.freeze(['accept', 'reject', 'abstain', 'operational_failure']);
-const PROTOCOL_VERSION = 'exam-v2.0';
+const PROTOCOL_VERSION = 'exam-v2.1';
 const MAX_ATTEMPTS = 2;
 const REQUEST_TIMEOUT_MS = 60_000;
 
@@ -46,6 +48,10 @@ function canonicalize(value) {
 function canonicalJsonl(rows) { return rows.length ? `${rows.map((row) => canonicalize(row)).join('\n')}\n` : ''; }
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function modelIdentity(model) {
+  return { request_model: model.request_model, model_identity: model.model_identity };
 }
 
 function normalizeEntity(value) {
@@ -189,8 +195,7 @@ async function structuredRequest({ fetchFn, endpoint, apiKey, model, schema, sch
         body: JSON.stringify({
           model: model.request_model,
           messages: [{ role: 'system', content: system }, { role: 'user', content: JSON.stringify(payload) }],
-          temperature: 0,
-          seed: 0,
+          ...REQUEST_PROFILES[model.request_profile],
           provider: { require_parameters: true, allow_fallbacks: false },
           response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
         }),
@@ -383,7 +388,7 @@ async function runAdjudication({ corpusRows, contextRows, laneARows, laneBRows, 
     rubric_version: RUBRIC_VERSION,
     rubric_sha256: RUBRIC_SHA256,
     seed,
-    identities: { grok: LANE_MODELS.grok, kimi: LANE_MODELS.kimi, gemini: ADJUDICATOR_MODEL },
+    identities: { grok: modelIdentity(LANE_MODELS.grok), kimi: modelIdentity(LANE_MODELS.kimi), gemini: modelIdentity(ADJUDICATOR_MODEL) },
     inputs: inputHashes || {
       corpus_sha256: sha256(canonicalJsonl(corpusRows)),
       context_sha256: sha256(canonicalJsonl(contextRows)),
@@ -407,7 +412,12 @@ function protocolDescriptor(readSchema = (name) => readRegularNoFollow(path.join
     version: PROTOCOL_VERSION,
     rubric: { version: RUBRIC_VERSION, sha256: RUBRIC_SHA256 },
     seed: UNION_SEED,
-    identities: { grok: LANE_MODELS.grok, kimi: LANE_MODELS.kimi, gemini: ADJUDICATOR_MODEL },
+    identities: { grok: modelIdentity(LANE_MODELS.grok), kimi: modelIdentity(LANE_MODELS.kimi), gemini: modelIdentity(ADJUDICATOR_MODEL) },
+    request_profiles: {
+      grok: LANE_MODELS.grok.request_profile,
+      kimi: LANE_MODELS.kimi.request_profile,
+      gemini: ADJUDICATOR_MODEL.request_profile,
+    },
     clustering: 'same_family_and_nfkc_entity_plus_exact_interval_containment_only',
     ordering: 'seeded_sha256_opaque_candidate_order',
     voting: 'two_accepts_of_grok_kimi_gemini',
@@ -504,6 +514,7 @@ module.exports = {
   LANE_MODELS,
   assertPathSeparation,
   PROTOCOL_VERSION,
+  REQUEST_PROFILES,
   SWEEP_RESPONSE_SCHEMA,
   UNION_SEED,
   VOTE_RESPONSE_SCHEMA,

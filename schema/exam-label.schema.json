@@ -16,12 +16,12 @@
       "required": ["id", "request_model", "model_identity"],
       "properties": {
         "id": { "enum": ["lane-a", "lane-b"] },
-        "request_model": { "enum": ["x-ai/grok-4.5", "moonshotai/kimi-k3"] },
-        "model_identity": { "enum": ["x-ai/grok-4.5", "kimi-k3-20260715"] }
+        "request_model": { "enum": ["x-ai/grok-4.5", "moonshotai/kimi-k3-20260715"] },
+        "model_identity": { "enum": ["x-ai/grok-4.5", "moonshotai/kimi-k3"] }
       },
       "oneOf": [
         { "properties": { "id": { "const": "lane-a" }, "request_model": { "const": "x-ai/grok-4.5" }, "model_identity": { "const": "x-ai/grok-4.5" } } },
-        { "properties": { "id": { "const": "lane-b" }, "request_model": { "const": "moonshotai/kimi-k3" }, "model_identity": { "const": "kimi-k3-20260715" } } }
+        { "properties": { "id": { "const": "lane-b" }, "request_model": { "const": "moonshotai/kimi-k3-20260715" }, "model_identity": { "const": "moonshotai/kimi-k3" } } }
       ]
     },
     "status": { "enum": ["ok", "operational_failure"] },

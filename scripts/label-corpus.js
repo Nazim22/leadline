@@ -36,9 +36,13 @@ const LABEL_PROVENANCE_PATHS = Object.freeze([
 const RUBRIC_VERSION = 'detector-gold-v0.2';
 const MAX_ATTEMPTS = 2;
 const REQUEST_TIMEOUT_MS = 60_000;
+const REQUEST_PROFILES = Object.freeze({
+  'deterministic-v1': Object.freeze({ temperature: 0, seed: 0 }),
+  'provider-default-v1': Object.freeze({}),
+});
 const LABELER_MODELS = Object.freeze([
-  Object.freeze({ request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' }),
-  Object.freeze({ request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' }),
+  Object.freeze({ request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' }),
+  Object.freeze({ request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' }),
 ]);
 const FAMILIES = Object.freeze(['historical', 'structural', 'repository', 'runtime']);
 const LABEL_RUBRIC = Object.freeze({
@@ -253,9 +257,10 @@ function validateConfig(config) {
   const requestModels = new Set();
   const identities = new Set();
   for (const labeler of config.labelers) {
-    if (!exactKeys(labeler, ['id', 'request_model', 'model_identity'])
+    if (!exactKeys(labeler, ['id', 'request_model', 'model_identity', 'request_profile'])
         || typeof labeler.id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,31}$/u.test(labeler.id)
-        || typeof labeler.request_model !== 'string' || typeof labeler.model_identity !== 'string') {
+        || typeof labeler.request_model !== 'string' || typeof labeler.model_identity !== 'string'
+        || !Object.hasOwn(REQUEST_PROFILES, labeler.request_profile)) {
       throw new TypeError('labeler config entry is invalid');
     }
     if (ids.has(labeler.id) || requestModels.has(labeler.request_model) || identities.has(labeler.model_identity)) {
@@ -361,8 +366,7 @@ async function requestLabel({ endpoint, labeler, apiKey, payload, fetchFn, valid
           { role: 'system', content: LABEL_RUBRIC_PROMPT },
           { role: 'user', content: JSON.stringify(payload) },
         ],
-        temperature: 0,
-        seed: 0,
+        ...REQUEST_PROFILES[labeler.request_profile],
         provider: { require_parameters: true, allow_fallbacks: false },
         response_format: {
           type: 'json_schema',
@@ -619,6 +623,7 @@ module.exports = {
   LABEL_RUBRIC_PROMPT,
   MODEL_RESPONSE_SCHEMA,
   PROVENANCE_PATHS: LABEL_PROVENANCE_PATHS,
+  REQUEST_PROFILES,
   RUBRIC_SHA256,
   RUBRIC_VERSION,
   help,

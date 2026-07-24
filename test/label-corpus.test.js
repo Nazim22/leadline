@@ -83,8 +83,8 @@ function config() {
     schema_version: 2,
     base_url: 'https://openrouter.ai/api/v1',
     labelers: [
-      { id: 'lane-a', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
-      { id: 'lane-b', request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
+      { id: 'lane-a', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' },
+      { id: 'lane-b', request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' },
     ],
   };
 }
@@ -125,7 +125,7 @@ function deterministicFetch({ invalidateFirst = false, alwaysInvalid = false } =
     attempts.set(key, (attempts.get(key) || 0) + 1);
     calls.push({ url, options, body, payload });
     const invalid = alwaysInvalid || (invalidateFirst && key.startsWith('x-ai/') && attempts.get(key) === 1);
-    const identity = body.model === 'moonshotai/kimi-k3' ? 'kimi-k3-20260715' : body.model;
+    const identity = body.model === 'moonshotai/kimi-k3-20260715' ? 'moonshotai/kimi-k3' : body.model;
     return response(identity, invalid
       ? '{"schema_version":2,"claims":[],"extra":true}'
       : validContent(payload.completion_id));
@@ -138,8 +138,8 @@ test('endpoint and context provenance reject bypasses before labeling', () => {
   assert.throws(() => validateConfig({
     ...config(),
     labelers: [
-      { id: 'lane-a', request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
-      { id: 'lane-b', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
+      { id: 'lane-a', request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' },
+      { id: 'lane-b', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' },
     ],
   }), /lane-a|locked|mapping/u);
   const copied = contextRows();
@@ -174,8 +174,8 @@ test('dual labelers receive only blind context and completion data in determinis
 
   assert.deepEqual(first, second);
   assert.deepEqual(LABELER_MODELS, [
-    { request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
-    { request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
+    { request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' },
+    { request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' },
   ]);
   assert.equal(RUBRIC_VERSION, 'detector-gold-v0.2');
   assert.equal(first.lanes.length, 2);
@@ -188,8 +188,13 @@ test('dual labelers receive only blind context and completion data in determinis
     assert.equal(call.url, 'https://openrouter.ai/api/v1/chat/completions');
     assert.equal(call.options.redirect, 'error');
     assert.equal(call.options.headers.authorization, 'Bearer secre...ey');
-    assert.equal(call.body.temperature, 0);
-    assert.equal(call.body.seed, 0);
+    if (call.body.model === 'moonshotai/kimi-k3-20260715') {
+      assert.equal(Object.hasOwn(call.body, 'temperature'), false);
+      assert.equal(Object.hasOwn(call.body, 'seed'), false);
+    } else {
+      assert.equal(call.body.temperature, 0);
+      assert.equal(call.body.seed, 0);
+    }
     assert.equal(call.body.response_format.type, 'json_schema');
     assert.deepEqual(Object.keys(call.payload).sort(), ['completion', 'completion_id', 'preceding_context']);
     assert.equal(JSON.stringify(call.payload).includes('prediction'), false);

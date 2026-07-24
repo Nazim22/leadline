@@ -103,7 +103,11 @@ function label(completionId, labelerId, claims, status = 'ok') {
     rubric_version: 'detector-gold-v0.2',
     rubric_sha256: RUBRIC_SHA256,
     completion_id: completionId,
-    labeler: { id: labelerId, ...identity },
+    labeler: {
+      id: labelerId,
+      request_model: identity.request_model,
+      model_identity: identity.model_identity,
+    },
     status,
     attempts: status === 'ok' ? 1 : 2,
     invalid_attempts: status === 'ok' ? 0 : 2,

@@ -21,6 +21,8 @@ Build-side conditions 1–3 are enforced by code and tests:
 
 Launch condition 4 is intentionally operator-executed because OpenRouter key custody remains on LXC 122. **Before any paid lane run, Pingu runs the real Kimi synthetic preflight from 122 as execution step zero against the merged, operator-locked tree.** LXC 134 never receives the credential. A failed preflight stops the exam; it is not replaced by a mocked or inferred success.
 
+The first real preflight stopped the exam before corpus extraction because Kimi's sole endpoint does not support `temperature` or `seed`, and OpenRouter returns its generic model slug rather than the dated endpoint name. Protocol `exam-v2.1` incorporates those observed constraints before any slice was drawn or scored.
+
 ## 1. Blind context
 
 The sanitized companion context JSONL has exactly one row per corpus completion:
@@ -59,12 +61,14 @@ Credential-free configuration:
     {
       "id": "lane-a",
       "request_model": "x-ai/grok-4.5",
-      "model_identity": "x-ai/grok-4.5"
+      "model_identity": "x-ai/grok-4.5",
+      "request_profile": "deterministic-v1"
     },
     {
       "id": "lane-b",
-      "request_model": "moonshotai/kimi-k3",
-      "model_identity": "kimi-k3-20260715"
+      "request_model": "moonshotai/kimi-k3-20260715",
+      "model_identity": "moonshotai/kimi-k3",
+      "request_profile": "provider-default-v1"
     }
   ]
 }
@@ -74,7 +78,9 @@ Exactly those lane mappings are accepted. Both lanes start concurrently and inde
 
 - frozen rubric `detector-gold-v0.2` and its exact SHA-256;
 - only `completion_id`, sanitized preceding context, and completion text;
-- `temperature: 0`, `seed: 0`, strict JSON Schema;
+- strict JSON Schema for both lanes;
+- profile `deterministic-v1` (`temperature:0`, `seed:0`) for Grok;
+- profile `provider-default-v1` (both sampling fields omitted) for Kimi because its sole endpoint does not support either field; this lane therefore uses provider-default sampling;
 - `provider.require_parameters: true` and `provider.allow_fallbacks: false`;
 - no OpenRouter `models` fallback list;
 - exact returned model-identity validation;
@@ -153,7 +159,7 @@ node scripts/adjudicate-union.js \
   --expected-tree "$LOCKED_EXAM_TREE"
 ```
 
-The adjudicator is pinned to `google/gemini-3.6-flash`; lane identities remain Grok 4.5 and Kimi K3. All adjudication requests use the same strict no-fallback routing and exact response-identity checks as labeling.
+The adjudicator is pinned to `google/gemini-3.6-flash`; lane identities remain Grok 4.5 and Kimi K3. Gemini and Grok use `deterministic-v1`. Kimi uses `provider-default-v1` for both initial labeling and completeness-sweep validation. All adjudication requests retain strict JSON Schema, no-fallback routing, and exact response-identity checks.
 
 ## 4. All-completion completeness sweep
 

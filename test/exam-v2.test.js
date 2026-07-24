@@ -15,11 +15,14 @@ const {
 } = require('../scripts/label-corpus');
 const {
   ADJUDICATOR_MODEL,
+  PROTOCOL_VERSION,
+  REQUEST_PROFILES,
   UNION_SEED,
   VOTE_RESPONSE_SCHEMA,
   assertPathSeparation,
   buildUnion,
   finalizeCandidate,
+  protocolDescriptor,
   runAdjudication,
   seededCandidateOrder,
   structuredRequest,
@@ -50,8 +53,8 @@ const config = {
   schema_version: 2,
   base_url: 'https://openrouter.ai/api/v1',
   labelers: [
-    { id: 'lane-a', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
-    { id: 'lane-b', request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
+    { id: 'lane-a', request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' },
+    { id: 'lane-b', request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' },
   ],
 };
 const claim = (span_exact_text, family, entity) => ({ span_exact_text, family, entity });
@@ -78,12 +81,23 @@ test('v2 rubric hash freezes exactly five synthetic anchors and every launch des
   assert.equal(RUBRIC_SHA256, sha256(JSON.stringify(LABEL_RUBRIC)));
   assert.match(LABEL_RUBRIC_PROMPT, /synthetic anchors/iu);
   assert.deepEqual(LABELER_MODELS, [
-    { request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5' },
-    { request_model: 'moonshotai/kimi-k3', model_identity: 'kimi-k3-20260715' },
+    { request_model: 'x-ai/grok-4.5', model_identity: 'x-ai/grok-4.5', request_profile: 'deterministic-v1' },
+    { request_model: 'moonshotai/kimi-k3-20260715', model_identity: 'moonshotai/kimi-k3', request_profile: 'provider-default-v1' },
   ]);
   assert.deepEqual(ADJUDICATOR_MODEL, {
     request_model: 'google/gemini-3.6-flash',
     model_identity: 'google/gemini-3.6-flash',
+    request_profile: 'deterministic-v1',
+  });
+  assert.equal(PROTOCOL_VERSION, 'exam-v2.1');
+  assert.deepEqual(REQUEST_PROFILES, {
+    'deterministic-v1': { temperature: 0, seed: 0 },
+    'provider-default-v1': {},
+  });
+  assert.deepEqual(protocolDescriptor().request_profiles, {
+    grok: 'deterministic-v1',
+    kimi: 'provider-default-v1',
+    gemini: 'deterministic-v1',
   });
   assert.equal(typeof UNION_SEED, 'string');
   assert.equal(MODEL_RESPONSE_SCHEMA.properties.schema_version.const, 2);
@@ -98,7 +112,7 @@ test('lane requests are concurrent and enforce strict schema, parameters, no fal
     started.push(body.model);
     if (started.length === 2) release();
     await barrier;
-    const identity = body.model === 'moonshotai/kimi-k3' ? 'kimi-k3-20260715' : body.model;
+    const identity = body.model === 'moonshotai/kimi-k3-20260715' ? 'moonshotai/kimi-k3' : body.model;
     assert.deepEqual(body.provider, { require_parameters: true, allow_fallbacks: false });
     assert.deepEqual(body.response_format, {
       type: 'json_schema',
@@ -110,7 +124,7 @@ test('lane requests are concurrent and enforce strict schema, parameters, no fal
   const result = await labelCorpus({
     corpusRows, contextRows, config, apiKey: 'test-key', fetchFn, inputBytes: inputBytes(),
   });
-  assert.deepEqual(started.sort(), ['moonshotai/kimi-k3', 'x-ai/grok-4.5']);
+  assert.deepEqual(started.sort(), ['moonshotai/kimi-k3-20260715', 'x-ai/grok-4.5']);
   assert.equal(result.lanes.length, 2);
 
   const mismatch = async (_url, options) => response(JSON.parse(options.body).model, []);
@@ -124,12 +138,16 @@ test('Kimi config is fail-closed on the exact request and pinned response identi
   assert.doesNotThrow(() => validateConfig(config));
   assert.throws(() => validateConfig({
     ...config,
-    labelers: config.labelers.map((lane) => lane.id === 'lane-b' ? { ...lane, model_identity: 'moonshotai/kimi-k3' } : lane),
+    labelers: config.labelers.map((lane) => lane.id === 'lane-b' ? { ...lane, model_identity: 'kimi-k3-20260715' } : lane),
   }), /locked|identity|lane-b/iu);
   assert.throws(() => validateConfig({
     ...config,
     labelers: config.labelers.map((lane) => lane.id === 'lane-b' ? { ...lane, request_model: 'moonshotai/kimi-k3:free' } : lane),
   }), /locked|identity|lane-b/iu);
+  assert.throws(() => validateConfig({
+    ...config,
+    labelers: config.labelers.map((lane) => lane.id === 'lane-b' ? { ...lane, request_profile: 'deterministic-v1' } : lane),
+  }), /locked|profile|lane-b/iu);
 });
 
 test('union clustering is deterministic, containment-only, and never similarity-based', () => {
@@ -190,7 +208,7 @@ test('adjudicator sweeps every completion and two-of-three validates a sweep-onl
     } else {
       value = { schema_version: 2, candidate_id: payload.candidate.candidate_id, decision: 'accept' };
     }
-    const identity = body.model === 'moonshotai/kimi-k3' ? 'kimi-k3-20260715' : body.model;
+    const identity = body.model === 'moonshotai/kimi-k3-20260715' ? 'moonshotai/kimi-k3' : body.model;
     return {
       ok: true, status: 200,
       async json() { return { model: identity, choices: [{ message: { content: JSON.stringify(value) } }] }; },
@@ -199,7 +217,7 @@ test('adjudicator sweeps every completion and two-of-three validates a sweep-onl
   const result = await runAdjudication({
     corpusRows, contextRows,
     laneARows: [laneRow('lane-a', 'x-ai/grok-4.5', 'x-ai/grok-4.5')],
-    laneBRows: [laneRow('lane-b', 'moonshotai/kimi-k3', 'kimi-k3-20260715')],
+    laneBRows: [laneRow('lane-b', 'moonshotai/kimi-k3-20260715', 'moonshotai/kimi-k3')],
     apiKey: 'test-key', fetchFn,
   });
   assert.equal(result.status, 'COMPLETE');
@@ -214,7 +232,12 @@ test('adjudicator sweeps every completion and two-of-three validates a sweep-onl
   assert.equal(JSON.stringify(geminiCandidate.payload).includes('lane-a'), false);
   assert.equal(JSON.stringify(geminiCandidate.payload).includes('lane-b'), false);
   assert.deepEqual(calls.filter((call) => call.body.response_format.json_schema.name === 'leadline_sweep_validation_v2')
-    .map((call) => call.body.model).sort(), ['moonshotai/kimi-k3', 'x-ai/grok-4.5']);
+    .map((call) => call.body.model).sort(), ['moonshotai/kimi-k3-20260715', 'x-ai/grok-4.5']);
+  const kimiCalls = calls.filter((call) => call.body.model === 'moonshotai/kimi-k3-20260715');
+  assert.ok(kimiCalls.length > 0);
+  assert.equal(kimiCalls.every((call) => !Object.hasOwn(call.body, 'temperature') && !Object.hasOwn(call.body, 'seed')), true);
+  assert.equal(calls.filter((call) => call.body.model !== 'moonshotai/kimi-k3-20260715')
+    .every((call) => call.body.temperature === 0 && call.body.seed === 0), true);
 });
 
 test('adjudicator correlates candidate response IDs and counts mismatches as invalid responses', async () => {

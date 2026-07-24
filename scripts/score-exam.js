@@ -598,8 +598,8 @@ function scoreExam({
   const laneB = validateLane(laneBRows, corpusRows, 'lane B');
   if (laneARows[0].labeler.id !== 'lane-a' || laneARows[0].labeler.request_model !== 'x-ai/grok-4.5'
       || laneARows[0].labeler.model_identity !== 'x-ai/grok-4.5'
-      || laneBRows[0].labeler.id !== 'lane-b' || laneBRows[0].labeler.request_model !== 'moonshotai/kimi-k3'
-      || laneBRows[0].labeler.model_identity !== 'kimi-k3-20260715') {
+      || laneBRows[0].labeler.id !== 'lane-b' || laneBRows[0].labeler.request_model !== 'moonshotai/kimi-k3-20260715'
+      || laneBRows[0].labeler.model_identity !== 'moonshotai/kimi-k3') {
     throw new Error('label files must use the locked Grok/Kimi lane mapping and pinned identities');
   }
   if (!adjudication || typeof adjudication !== 'object') throw new TypeError('sealed v2 adjudication artifact is required');

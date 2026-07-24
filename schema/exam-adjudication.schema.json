@@ -7,7 +7,7 @@
   "required": ["schema_version", "protocol_version", "protocol_sha256", "rubric_version", "rubric_sha256", "seed", "identities", "runtime", "inputs", "schema_hashes", "status", "invalid_response_attempts", "operational_failure_attempts", "operational_failure_requests", "rows"],
   "properties": {
     "schema_version": { "const": 2 },
-    "protocol_version": { "const": "exam-v2.0" },
+    "protocol_version": { "const": "exam-v2.1" },
     "protocol_sha256": { "$ref": "#/$defs/sha256" },
     "rubric_version": { "const": "detector-gold-v0.2" },
     "rubric_sha256": { "$ref": "#/$defs/sha256" },
@@ -67,7 +67,7 @@
       "properties": { "request_model": { "type": "string" }, "model_identity": { "type": "string" } }
     },
     "grok": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "x-ai/grok-4.5" }, "model_identity": { "const": "x-ai/grok-4.5" } } }] },
-    "kimi": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "moonshotai/kimi-k3" }, "model_identity": { "const": "kimi-k3-20260715" } } }] },
+    "kimi": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "moonshotai/kimi-k3-20260715" }, "model_identity": { "const": "moonshotai/kimi-k3" } } }] },
     "gemini": { "allOf": [{ "$ref": "#/$defs/model" }, { "properties": { "request_model": { "const": "google/gemini-3.6-flash" }, "model_identity": { "const": "google/gemini-3.6-flash" } } }] },
     "claim": {
       "type": "object", "additionalProperties": false,

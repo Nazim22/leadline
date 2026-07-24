@@ -10,7 +10,7 @@
     "harness_version": { "const": "exam-score-v0.2" },
     "protocol": {
       "type": "object", "additionalProperties": false, "required": ["version", "sha256"],
-      "properties": { "version": { "const": "exam-v2.0" }, "sha256": { "$ref": "#/$defs/sha256" } }
+      "properties": { "version": { "const": "exam-v2.1" }, "sha256": { "$ref": "#/$defs/sha256" } }
     },
     "rubric": {
       "type": "object", "additionalProperties": false, "required": ["version", "sha256"],

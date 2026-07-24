@@ -869,11 +869,12 @@ function validateReplayInputs({ corpusText, artifactText, manifest, coverageSumm
     throw new Error('artifact bytes do not match the operator-locked artifact SHA-256');
   }
   const coverageKeys = [
-    'schema_version', 'mode', 'manifest_sha256', 'corpus_sha256', 'artifact_sha256',
+    'schema_version', 'harness_version', 'mode', 'manifest_sha256', 'corpus_sha256', 'artifact_sha256',
     'sampled_completions', 'stratum_counts', 'zero_candidate_completions', 'detector_status_counts',
     'operational_failure_completions', 'evidence_contact_count', 'obligation_count', 'labels_attached',
   ];
   if (!exactKeys(coverageSummary, coverageKeys) || coverageSummary.schema_version !== 1
+      || coverageSummary.harness_version !== 'replay-v0.1'
       || coverageSummary.mode !== 'coverage' || coverageSummary.labels_attached !== false
       || !/^[a-f0-9]{64}$/u.test(coverageSummary.manifest_sha256 || '')
       || !/^[a-f0-9]{64}$/u.test(coverageSummary.corpus_sha256 || '')

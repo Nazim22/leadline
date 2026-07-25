@@ -78,3 +78,49 @@ test('covers high-precision development variants without semantic inference', ()
     ['repository'],
   );
 });
+
+test('ignores tells inside quoted data, code, and shell procedure groups', () => {
+  const policy = loadPolicy(policyPath);
+  const prompts = [
+    'Rewrite `who calls performSync` without running it',
+    'Rewrite `literal `` who calls performSync` without running it',
+    'The example says "who calls performSync"; rewrite it',
+    'Rewrite "say \\"who calls performSync\\" now" without running it',
+    'Rewrite "who calls performSync; then merge',
+    'Example:\n```sh\nwho calls performSync\n```\nRewrite the example.',
+    'Example:\n````md\n```\nwho calls performSync\n```\n````\nRewrite the example.',
+    'byte-review (git fetch; git diff base..head), verify hashes, then merge',
+  ];
+
+  for (const prompt of prompts) assert.deepEqual(matchPrompt(prompt, policy), []);
+});
+
+test('removes naked executable mentions without suppressing evidence requests', () => {
+  const policy = loadPolicy(policyPath);
+
+  assert.deepEqual(matchPrompt('git diff base..head, then merge', policy), []);
+  assert.deepEqual(
+    matchPrompt('show diff for auth.js', policy).map((match) => match.family),
+    ['repository'],
+  );
+  assert.deepEqual(
+    matchPrompt('check whether port 443 is open', policy).map((match) => match.family),
+    ['runtime'],
+  );
+});
+
+test('retains an eligible evidence clause beside protected quoted data', () => {
+  const policy = loadPolicy(policyPath);
+  for (const prompt of [
+    'Rewrite "who calls fake", and who calls performSync?',
+    'Rewrite "say \\"who calls fake\\" now" and who calls performSync?',
+  ]) {
+    const matches = matchPrompt(prompt, policy);
+
+    assert.deepEqual(matches.map((match) => [match.family, match.text]), [['structural', 'who calls']]);
+    assert.deepEqual(matches[0].span, {
+      start: prompt.lastIndexOf('who calls'),
+      end: prompt.lastIndexOf('who calls') + 'who calls'.length,
+    });
+  }
+});

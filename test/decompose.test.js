@@ -61,3 +61,23 @@ test('bounds boundary whitespace at eight and safely under-splits longer runs', 
   const nine = 'Did we ship the graph fix         and         is it live?';
   assert.deepEqual(decompose(nine), [{ text: nine, start: 0, end: nine.length }]);
 });
+
+test('does not decompose delimiters inside protected shell groups or code spans', () => {
+  const shell = 'byte-review (git fetch; git diff base..head), then merge';
+  assert.deepEqual(decompose(shell), [
+    { text: 'byte-review (git fetch; git diff base..head)', start: 0, end: shell.indexOf(', then') },
+    { text: 'merge', start: shell.indexOf('merge'), end: shell.length },
+  ]);
+
+  for (const prompt of [
+    'Rewrite `who calls alpha; then show beta` without executing it',
+    'Rewrite `literal `` who calls alpha; then show beta` without executing it',
+    'Rewrite "who calls alpha; then show beta" without executing it',
+    'Rewrite "say \\"who calls alpha; then show beta\\" now" without executing it',
+    'Rewrite "who calls alpha; then show beta',
+    'Example:\n```sh\nwho calls alpha; then show beta\n```\nwithout executing it',
+    'Example:\n````md\n```\nwho calls alpha; then show beta\n```\n````\nwithout executing it',
+  ]) {
+    assert.deepEqual(decompose(prompt), [{ text: prompt, start: 0, end: prompt.length }]);
+  }
+});

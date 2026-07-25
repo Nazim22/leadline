@@ -133,6 +133,38 @@ test('UserPromptSubmit injects a compact route block and stays silent without ob
   assert.deepEqual(handleClaudeHook(event(target, 'UserPromptSubmit', { prompt: 'Make it better' }), { projectDir: target, packageRoot: root }), {});
 });
 
+test('procedural and protected-data prompts create no hook obligation in advisory or enforce mode', () => {
+  const prompts = [
+    'byte-review (git fetch; git diff base..head), verify hashes, then merge',
+    'Rewrite `literal `` who calls fake` without executing it',
+  ];
+
+  for (const mode of ['advisory', 'enforce']) {
+    for (const prompt of prompts) {
+      const target = project();
+      installClaudeCode({ projectDir: target, packageRoot: root, mode });
+      assert.deepEqual(
+        handleClaudeHook(event(target, 'UserPromptSubmit', { prompt }), { projectDir: target, packageRoot: root }),
+        {},
+      );
+      assert.deepEqual(
+        handleClaudeHook(event(target, 'PreToolUse', {
+          tool_name: 'Grep', tool_input: { pattern: 'unrelated' }, tool_use_id: `${mode}-grep`,
+        }), { projectDir: target, packageRoot: root }),
+        {},
+      );
+      assert.deepEqual(
+        handleClaudeHook(event(target, 'Stop', {
+          stop_hook_active: false, last_assistant_message: 'Finished the requested edits.',
+        }), { projectDir: target, packageRoot: root }),
+        {},
+      );
+      const state = JSON.parse(fs.readFileSync(path.join(target, '.leadline', 'state', 'session-live-1.json'), 'utf8'));
+      assert.deepEqual(state.contract.steps, []);
+    }
+  }
+});
+
 test('protected operation denial escalates to an executable human approval fallback', () => {
   const target = project();
   installClaudeCode({ projectDir: target, packageRoot: root, mode: 'enforce' });

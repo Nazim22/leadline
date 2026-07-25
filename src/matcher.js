@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const YAML = require('yaml');
-const { decompose } = require('./decompose');
+const { decompose, overlapsRange, scanProtectedRanges } = require('./decompose');
 
 function loadPolicy(filePath) {
   const parsed = YAML.parse(fs.readFileSync(filePath, 'utf8'));
@@ -65,6 +65,7 @@ function isClauseFullyExcluded(clause, policy) {
 function matchPrompt(prompt, policy) {
   if (typeof prompt !== 'string') throw new TypeError('prompt must be a string');
   const clauses = decompose(prompt);
+  const protectedRanges = scanProtectedRanges(prompt);
   const matches = [];
 
   clauses.forEach((clause, clauseIndex) => {
@@ -76,6 +77,11 @@ function matchPrompt(prompt, policy) {
         while ((match = expression.exec(clause.text)) !== null) {
           const localStart = match.index;
           const localEnd = localStart + match[0].length;
+          const start = clause.start + localStart;
+          if (overlapsRange(start, start + match[0].length, protectedRanges)) {
+            if (match[0].length === 0) expression.lastIndex += 1;
+            continue;
+          }
           const isExcluded = excludedRanges.some((range) => (
             range.family === tell.family && localStart < range.end && localEnd > range.start
           ));
@@ -84,7 +90,6 @@ function matchPrompt(prompt, policy) {
             continue;
           }
 
-          const start = clause.start + localStart;
           matches.push({
             id: tell.id,
             family: tell.family,

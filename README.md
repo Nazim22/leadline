@@ -107,7 +107,7 @@ Every shipped rule carries a `why` field with the real measurement behind it. Pa
 | `authoritative-source-before-memory` | “what did we decide/build” must query the maintained source, not reconstruct from vibes | agents repeatedly re-derived documented decisions from code and chat |
 | `prerequisite-before-protected-ops` | protected operations require reading the access map first — literal path match, no impostors | protected commands were attempted before the map was read |
 
-Packs are plain YAML with a JSON-Schema contract (`schema/policy-pack.schema.json`). Write your own; PRs welcome — **bring your burn history**.
+Packs are plain YAML with a JSON-Schema contract (`schema/policy-pack.schema.json`). Write your own; PRs welcome — **bring your burn history** (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Honesty section
 
@@ -122,6 +122,7 @@ Packs are plain YAML with a JSON-Schema contract (`schema/policy-pack.schema.jso
 * [docs/EXAM.md](docs/EXAM.md) — the exam that killed our detector (methodology, sealed-artifact protocol, pre-publication security backlog)
 * [docs/REPLAY.md](docs/REPLAY.md) — the frozen replay / coverage harness
 * [AGENTS.md](AGENTS.md) — entry point for AI agents · [llms.txt](llms.txt) — documentation map for LLMs
+* [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute (the burn-receipt rule lives here) · [SECURITY.md](SECURITY.md) — reporting and honest threat model
 
 ## License
 

@@ -1,135 +1,126 @@
-<!-- Leadline — private until public launch. Do not distribute. -->
+<p align="center">
+  <img src="brand/banner.svg" width="100%" alt="Leadline — evidence router for coding agents. Sound the source. Bring back proof." />
+</p>
 
-# Leadline
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-0E8FA6?style=flat-square" alt="MIT license" />
+  <img src="https://img.shields.io/badge/tests-218%2F218-4FB477?style=flat-square" alt="218/218 tests passing" />
+  <img src="https://img.shields.io/badge/claude--code-plugin-B98A34?style=flat-square" alt="Claude Code plugin" />
+  <img src="https://img.shields.io/badge/PRs-bring_your_burn_history-0E8FA6?style=flat-square" alt="PRs welcome" />
+</p>
 
-*Your agent asks the wrong tool, or fakes the right one. Leadline measures both failure modes before enforcement ships.*
+<p align="center">
+  <a href="#get-started-60-seconds">Get started</a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#policy-packs--enforcement-with-receipts">Policy packs</a> ·
+  <a href="#honesty-section">Honesty</a> ·
+  <a href="docs/EXAM.md">The exam story</a> ·
+  <a href="AGENTS.md">For agents</a>
+</p>
 
-**Evidence control plane for coding agents** · routes each question to the right source · emits ordered evidence contracts · evaluates use receipts offline · local-first · no embeddings required for V0
-
-> Pronounced **"LED-line"** — a nautical lead line sounds unseen depth and brings back a seabed sample. It routes to ground truth *and* returns evidence that contact happened.
+<p align="center">
+  Say it <b>“LED-line”</b> — a sounding line, not a leadership line.
+</p>
 
 ---
 
-Coding agents pick tools by willpower. They trust stale context, and they can fake tool calls to satisfy gates — a published failure mode: **tool-call hacking**. Deny-only gates say "not that path"; they never say "here's the right one," and they can be gamed.
+AI coding agents pick tools by willpower. They grep when the code graph already knows, trust stale memory when a live probe would answer, fake or skip tool calls to satisfy gates — a published LLM failure mode (*tool-call hacking*) — and declare success without evidence.
 
-Leadline classifies what kind of evidence a request needs — **history, code structure, repository bytes, or live runtime** — and emits an ordered contract pointing at the authoritative source. V0 measures route quality and use-receipt satisfaction. **Hook enforcement and live receipt capture are not shipped yet.**
+**Leadline** is a local-first evidence router and policy engine for coding agents (Claude Code today; Codex, Cursor, Windsurf and other MCP clients via advisory adapters on the roadmap). It classifies what kind of evidence a request needs — **historical, structural, repository, or runtime** — emits an ordered evidence contract pointing at the authoritative source, denies wrong-source tool calls *with the corrective route inside the denial*, grades every result as a **use receipt** (invocation alone never counts), and blocks “I’m done” while an obligation is unmet.
 
-## Before / after
+No LLM in the hook loop. No network. No telemetry. Deterministic local code, all the way down.
 
-You ask: *"did we build the retry logic, and is it live?"*
+## The moment it exists for
 
-Without Leadline, the agent may spawn a code scout to re-derive what your knowledge base already knows, then grep for deploy state.
+<p align="center">
+  <img src="brand/demo.svg" width="720" alt="Terminal: agent claims Done without evidence; Leadline Stop hook blocks with the unmet obligation and the corrective route; agent runs the real query; completion allowed." />
+</p>
 
-With Leadline V0:
-```
-Need: historical → runtime
-  1. historical  → recall store   (what was built)
-  2. runtime     → live probe     (is it deployed)
-Contract complete: true
-```
-
-If any positive clause cannot be routed or lacks a relevance anchor, the contract says `complete: false` and lists it in `unmatched_clauses`; partial classification cannot look successful.
-
-## What it does today
-
-- **Decompose** a request into ordered evidence obligations (`historical → runtime`, `structural → repository`, …) — routes are not mutually exclusive.
-- **Route** each obligation to an evidence family, mapped to *your* tools via adapters.
-- **Fail closed on classification gaps** — repeated same-family obligations are preserved, unresolved targets abstain, and unmatched clauses are explicit.
-- **Evaluate use-receipt criteria offline** — empty, irrelevant, or stale simulated results do not satisfy an obligation.
-
-Planned, not shipped in V0: host hooks, enforcement, provider availability arbitration, live use-receipt capture, embeddings, and adaptation.
-
-## How it works
+A real transcript from Leadline’s own acceptance run (Claude Code hooks, enforce mode). The agent tried to finish with *“Done! applyDiscount is called from several places”* — no tool had ever run. The Stop hook answered:
 
 ```
-  your prompt
-      │
-      ▼
-  ┌──────────────────────────────────────────────────────────┐
-  │  Leadline V0   (local deterministic core, no LLM)         │
-  │  ──────────────────────────────────────────────────────  │
-  │  decompose → high-precision tells → ordered contract      │
-  │                                                          │
-  │  4 evidence families → provider mappings:                 │
-  │    historical → recall store     structural → code graph │
-  │    repository → grep/read/git    runtime    → live probe │
-  └──────────────────────────────────────────────────────────┘
-      │
-      ├── route contract (`complete`, steps, unmatched clauses)
-      └── offline use-receipt satisfaction simulation
+Unmet obligation: who calls applyDiscount?
+Satisfy it via mcp__gbrain__code_callers.
+Alternatively, explicitly abstain and give the reason.
 ```
 
-- **Decompose** — split explicit sequencing and high-precision conjunction boundaries; prefer under-splitting.
-- **Tells** — bounded wildcard rules with exact spans, stable IDs, and span-scoped negation. Conflicts produce ordered multi-step plans.
-- **Targets** — every emitted step has a non-empty relevance anchor; unresolved targets abstain.
-- **Receipts** — evaluation order is `empty → irrelevant → stale → satisfied`. Invocation alone never counts.
+Blocked. Still blocked on the second try. The third attempt is allowed with a visible warning — enforcement must never brick a session (the anti-lockup rule).
 
-## Benchmark — the honest state
+And when a receipt was forged — a `PostToolUse` result for a call that was never accepted:
 
-Leadline is measurement-first: the benchmark exists **before** enforcement does. Reproduce it with:
+```
+Receipt failed (unbound): PostToolUse must match an accepted PreToolUse call in this turn.
+```
+
+## What it does
+
+* **Route before action** — decompose the prompt into evidence obligations and inject a compact contract. `complete: false` and unmatched clauses are reported honestly, never faked.
+* **Enforce per tool call** — wrong-source calls are denied with a three-part message: the unmet obligation, the exact corrective command, and the legal alternative (sanctioned fallback or explicit abstention).
+* **Grade the receipt** — results are checked for substance, relevance, and freshness. Empty results, input echoes, `"No results found"` prose, and transport metadata (`status: 200`, `is_error: false`) satisfy nothing. A structured zero (`{count: 0, callers: []}`) is honest evidence and counts.
+* **Gate completion** — the Stop hook refuses “done” while obligations are unmet, twice; then warns and yields.
+* **Receipts can’t be forged** — `PostToolUse` results bind to the accepted `PreToolUse` call by `tool_use_id` + canonical argument digest, consumed exactly once.
+* **Everything is traced** — one JSONL line per decision; `leadline trace` renders the session story with counts: denials, corrections followed, abstentions, gaming attempts caught.
+
+Failure semantics are mode-aware: **enforcement fails closed** (a crashed hook can’t silently disable enforcement), **advisory fails open** (a dry run can never block you).
+
+## The loop
+
+```
+ prompt ─▶ UserPromptSubmit ─▶ evidence contract (ordered obligations)
+                                    │
+ tool call ─▶ PreToolUse ────▶ ALLOW │ DENY + corrective route │ ASK (human)
+                                    │
+ result ─▶ PostToolUse ──────▶ use receipt: empty → irrelevant → stale → satisfied
+                                    │
+ "done" ─▶ Stop ─────────────▶ obligations met? · else DENY ×2 → warn-and-allow
+```
+
+Four evidence families, mapped to *your* tools via policy packs:
+
+| family | answers | typical route |
+| --- | --- | --- |
+| `historical` | what was decided / built / shipped | recall store, knowledge base |
+| `structural` | what calls / imports / depends | code graph |
+| `repository` | exact current bytes / config | grep · read · git |
+| `runtime` | what is alive / deployed / responding | live probe (CLI / API) |
+
+## Get started (60 seconds)
 
 ```bash
-npm install && npm run bench
+npx leadline init --claude-code --dry-run    # advisory: observes, never blocks
+# work normally for a while, then:
+npx leadline trace --project . --session <id>  # what WOULD have been caught
+npx leadline init --claude-code              # flip to enforce
 ```
 
-**Current results — synthetic, self-labeled corpora (N=26). This is a scaffold baseline, NOT proof on real work.**
+Dry-run mode is the benchmark: it watches your own sessions and shows you your agent’s wrong-source calls, empty receipts, and unproven “done” claims — your data, your numbers — before a single call is ever denied.
 
-| Corpus | N | first-route | exact-plan | multi-intent |
-| --- | ---: | ---: | ---: | ---: |
-| Development (tuning) | 8 | 100.0% | 100.0% | 100.0% |
-| **Frozen evaluation** | 18 | **62.5%** | **61.1%** | 50.0% |
+## Policy packs — enforcement with receipts
 
-First-route accuracy excludes gold-abstention cases and prints its routed-case denominator. A non-empty predicted route with `complete=false` cannot receive exact-plan credit. Correct empty-route abstentions still count.
+Every shipped rule carries a `why` field with the real measurement behind it. Packs without receipts are opinions.
 
-The frozen evaluation corpus is never tuned against. It currently exposes **7 Stage-1 misses**; the runner prints every miss and any unmatched clauses.
+| pack | rule | the burn behind it |
+| --- | --- | --- |
+| `code-intelligence-before-raw-search` | callers/callees/references questions must hit the code graph before raw grep | an audit found ~200 raw search calls per session re-deriving indexed facts |
+| `authoritative-source-before-memory` | “what did we decide/build” must query the maintained source, not reconstruct from vibes | agents repeatedly re-derived documented decisions from code and chat |
+| `prerequisite-before-protected-ops` | protected operations require reading the access map first — literal path match, no impostors | protected commands were attempted before the map was read |
 
-**Anti-gate-gaming — simulated (N=7):**
+Packs are plain YAML with a JSON-Schema contract (`schema/policy-pack.schema.json`). Write your own; PRs welcome — **bring your burn history**.
 
-| Metric | Result |
-| --- | ---: |
-| empty/irrelevant gate-gaming bypasses | **0/4** |
-| stale evidence rejected when freshness is required | **1/1** |
-| false blocks on expected-success cases | **0/2** |
+## Honesty section
 
-These are deterministic fixture results from `src/satisfaction.js`, not live-agent evidence.
+* **Enforcement is host-dependent.** Claude Code supports the full loop (deny + completion-block) and is the flagship adapter. Other hosts get advisory/audit modes via a capability-negotiated interface — the engine computes the strongest safe mode per host and never overclaims.
+* **Routing quality is measured, not promised.** The deterministic router lands **62.5% first-route accuracy** (N=16 routed) and 61.1% full-plan exact-match on a small frozen eval (N=18, synthetic) — reproduce with `npm run bench`. The satisfaction simulator holds **0/4 gate-gaming bypasses**, 1/1 freshness rejections, and 0/2 false blocks. Small honest numbers we’re working against in the open beat big vague ones.
+* **This project killed its own component.** We built an adversarial, pre-registered exam (three frontier models, blind 2-of-3 adjudication, sealed artifacts) to certify a claim detector before wiring it in. The detector failed decisively — recall ceiling ~7% against a 40% gate — so it shipped as nothing. The exam machinery became our acceptance framework instead. Full story: [docs/EXAM.md](docs/EXAM.md).
+* **When to skip:** if your agent has no better sources than grep — no code graph, no knowledge base, no live systems — there is little to route to. Start with the dry run and see if it finds anything worth enforcing.
 
-### What real testing means — not done yet
+## Docs
 
-The numbers above come from prompts we wrote and labeled. The tests that matter next are:
-
-1. **Real corpus** — prompts harvested from real transcripts and labeled independently of whoever tunes the tells.
-2. **Live shadow run** — wire a host adapter into real sessions and compare Leadline's contract with the sources the agent actually uses. No enforcement first.
-3. **Live gate-gaming test** — after enforcement exists, fire empty, irrelevant, and stale calls in a real session and verify they cannot advance the contract.
-
-Until those land, the honest claim is: *a verified measurement scaffold with a synthetic baseline* — not *it works on your real work.*
-
-## Run from source
-
-`v0.0.1` — **pre-alpha, private.** The repository is runnable; there is no public package release or hook installer yet.
-
-```bash
-npm install
-npm test
-npm run bench
-node ./bin/leadline.js route "did we ship the graph fix, and is it live?"
-```
-
-The intended later UX is `npx leadline init`, after host adapters and enforcement ship.
-
-## Compared to
-
-| Current capability | ordered routes | enforces the path | validates source use | local |
-| --- | ---: | ---: | ---: | ---: |
-| **Leadline V0** | **yes** | no — planned | offline simulation | yes |
-| semantic-router | single label | no | no | yes with a local encoder |
-| deny-only gates | — | blocks selected paths | no; invocation may be gameable | yes |
-
-`semantic-router` is a useful classification baseline; it selects a tool. Leadline's intended product scope is an ordered, enforceable, auditable evidence path, but V0 ships only the measurement layer.
-
-## Design
-
-Full design and external review notes are in [`docs/DESIGN.md`](docs/DESIGN.md).
+* [docs/DESIGN.md](docs/DESIGN.md) — architecture and design decisions
+* [docs/EXAM.md](docs/EXAM.md) — the exam that killed our detector (methodology, sealed-artifact protocol, pre-publication security backlog)
+* [docs/REPLAY.md](docs/REPLAY.md) — the frozen replay / coverage harness
+* [AGENTS.md](AGENTS.md) — entry point for AI agents · [llms.txt](llms.txt) — documentation map for LLMs
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT. Every claim above has a receipt — that’s rather the point.

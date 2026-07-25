@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 430" role="img" aria-label="Leadline blocking an unproven done claim in Claude Code">
+  <defs>
+    <linearGradient id="sea2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F1C20"/>
+      <stop offset="100%" stop-color="#0B1418"/>
+    </linearGradient>
+  </defs>
+  <rect width="860" height="430" rx="14" fill="url(#sea2)" stroke="#20343A"/>
+  <!-- title bar -->
+  <circle cx="26" cy="26" r="6" fill="#E0655A"/><circle cx="48" cy="26" r="6" fill="#D8AC55"/><circle cx="70" cy="26" r="6" fill="#4FB477"/>
+  <text x="430" y="31" font-size="13" fill="#5E7378" text-anchor="middle" font-family="ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace">claude code · leadline enforce mode · Stop hook</text>
+  <g font-family="ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace" font-size="16">
+    <!-- agent claim -->
+    <text x="34" y="84" fill="#93A6A9">agent:</text>
+    <text x="34" y="112" fill="#E8F0F1">“Done! applyDiscount is called from several places.”</text>
+    <text x="34" y="136" fill="#5E7378" font-size="13">(no tool was ever called — no evidence exists)</text>
+    <!-- leadline block -->
+    <text x="34" y="182" fill="#E0655A" font-weight="700">■ BLOCKED — Stop denied</text>
+    <text x="34" y="214" fill="#2BC2D6">Unmet obligation: who calls applyDiscount?</text>
+    <text x="34" y="242" fill="#E8F0F1">Satisfy it via <tspan fill="#D8AC55">mcp__gbrain__code_callers</tspan>.</text>
+    <text x="34" y="270" fill="#E8F0F1">Alternatively, explicitly abstain and give the reason.</text>
+    <!-- receipt path -->
+    <text x="34" y="318" fill="#93A6A9">agent runs the real query → receipt bound &amp; verified →</text>
+    <text x="34" y="346" fill="#4FB477" font-weight="700">✓ obligation satisfied — completion allowed</text>
+    <!-- footer -->
+    <text x="34" y="396" fill="#5E7378" font-size="13">every decision traced · forged receipts rejected · dry-run mode never blocks</text>
+  </g>
+</svg>

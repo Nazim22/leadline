@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" role="img" aria-label="Leadline — sound the source, bring back proof">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="-10%" r="90%">
+      <stop offset="0%" stop-color="#0E8FA6" stop-opacity="0.28"/>
+      <stop offset="60%" stop-color="#0E8FA6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B1418"/>
+      <stop offset="100%" stop-color="#060D0F"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" rx="18" fill="url(#sea)"/>
+  <rect width="1200" height="300" rx="18" fill="url(#glow)"/>
+  <!-- faint deep waves across the banner -->
+  <g stroke="#0E8FA6" stroke-opacity="0.14" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M-20 232 q75 -26 150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0"/>
+    <path d="M-20 262 q75 -26 150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0"/>
+  </g>
+  <!-- the mark -->
+  <g transform="translate(96,54) scale(3)">
+    <g stroke="#EAF6F8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="32" y1="7" x2="32" y2="41"/>
+      <path d="M13 23 q9.5 -7 19 0 q9.5 7 19 0"/>
+      <path d="M13 34 q9.5 -7 19 0 l6.5 7.5 12.5 -14"/>
+    </g>
+    <path d="M32 41 l7 8 -7 8 -7 -8 z" fill="#B98A34"/>
+  </g>
+  <!-- wordmark + copy -->
+  <g font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+    <text x="330" y="118" font-size="21" letter-spacing="6" fill="#2BC2D6" font-family="ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace">EVIDENCE ROUTER · FOR CODING AGENTS</text>
+    <text x="326" y="196" font-size="84" font-weight="800" letter-spacing="-2" fill="#E8F0F1">Leadline</text>
+    <text x="330" y="240" font-size="26" fill="#93A6A9">Sound the source. <tspan fill="#D8AC55">Bring back proof.</tspan></text>
+  </g>
+  <!-- status chip -->
+  <g font-family="ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace">
+    <text x="1104" y="258" font-size="14" fill="#5E7378" text-anchor="end">no receipt, no “done”</text>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+# Leadline
+
+> Local-first evidence router & policy engine for AI coding agents. Routes each question to the authoritative source (historical · structural · repository · runtime), enforces the evidence path through Claude Code hooks, grades tool results as use receipts, and blocks unproven "done" claims. No LLM in the hook loop.
+
+## Docs
+
+- [README](README.md): overview, real blocked-transcript demo, 60-second start, policy packs, honest benchmark numbers
+- [AGENTS.md](AGENTS.md): entry point for AI agents (how to behave under Leadline enforcement)
+- [docs/DESIGN.md](docs/DESIGN.md): architecture and design decisions
+- [docs/EXAM.md](docs/EXAM.md): the adjudicated exam protocol — three frontier models, blind 2-of-3 candidate adjudication, sealed artifacts; includes the pre-publication security backlog and the story of the claim detector this project examined and honestly failed
+- [docs/REPLAY.md](docs/REPLAY.md): frozen replay / coverage harness
+- [schema/policy-pack.schema.json](schema/policy-pack.schema.json): policy pack contract (every rule requires a burn-receipt `why`)
+- [schema/adapter-capabilities.schema.json](schema/adapter-capabilities.schema.json): capability-negotiated adapter modes (ENFORCE / PARTIAL_ENFORCE / ADVISE / AUDIT)
+
+## Key commands
+
+- `npx leadline init --claude-code --dry-run` — install in advisory mode (observes, never blocks)
+- `npx leadline route "<prompt>"` — print the evidence contract for a prompt
+- `npx leadline trace --project . --session <id>` — render the decision trace
+- `npm run bench` — reproduce the published routing/satisfaction numbers

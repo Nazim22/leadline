@@ -9,6 +9,22 @@ Implementation base:
 
 The inherited LL-3 detector/replay base remains frozen. The v2 labeler, adjudicator, scorer, and all three exam schemas are runtime-provenance paths. Labeling records every path's Git blob. Scoring requires the identical path set, exact pre-label causal blobs, and a sealed adjudication artifact bound to the exact commit, tree, and blob map. Scorer/adjudicator-only bytes may differ from the earlier labeling runtime only where the causal-boundary allowlist explicitly permits them.
 
+### Historical replay and extraction runtime generations
+
+Historical replay provenance is immutable. `scripts/replay.js` keeps commit `8488cb333157208e9781f8d3c32ea0dda587a368` and tree `1a3bd1de77558ecebf92ef4bed4a9d7bd1dfaca9` as its frozen identity, and loads project modules directly from that Git tree. Changed checkout bytes are never reported under the historical manifest. The three replay schemas, which are not present in that historical tree, are loaded from the immutable Git blobs pinned in `FROZEN_SCHEMAS`; replay never compiles mutable checkout schema bytes.
+
+Future corpus extraction uses the separate `extraction-runtime-v2` causal manifest in `scripts/extract-corpus.js`. Its complete transitive local CommonJS closure is pinned by both Git blob and SHA-256:
+
+| Path | Git blob | SHA-256 |
+|---|---|---|
+| `src/capability.js` | `41160296cf91fe6c97293da8247c19653367c5bb` | `40a110a3c120c298b398de477fb63d147a5aa2d8f64e5d0cd986d15ffd5f09a7` |
+| `src/claims.js` | `3aa8352239a81c45850a7b9dca9a4a153274728f` | `fba5fa3719704caf6065640503cffb9e9e549fd32fbac7eac974be35abdb737e` |
+| `src/entity-match.js` | `bd9f752986d5076d257e388426763bee78e26868` | `af0a211393e94c8f3abff612b5421f71c1b5d08d92818e9b1fb514c7cd27efdd` |
+| `src/evidence.js` | `22a60c1df5f82644c470138f7ac50c0ea13b1acf` | `3334559a118c1714183687a88aebc42998ee26dd7c5870f73036299c615d04c7` |
+| `src/receipts.js` | `ec509af77e3182eefad7678287c799ec2d849b67` | `dff3f1b020b493356984ee5b1d4acdeb8f48dbfdaceba9f7a2d1ba50babab60d` |
+
+Comparability is guaranteed only within one extraction-runtime generation. Cross-generation analysis requires re-extraction under one common generation or an explicit methodological qualification. The LL-6 security fix creates v2 because `src/capability.js` changed inside the loaded closure; the bounded whitespace change in `src/decompose.js` is outside that closure. Neither change regenerates or mutates a sealed historical artifact.
+
 No corpus, context, label, artifact, manifest, adjudication, or score file belongs in the repository. All execution artifacts are private operator-side files.
 
 ## 0. Launch conditions

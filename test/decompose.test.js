@@ -50,3 +50,14 @@ test('splits a bare conjunction only when the next side starts a new question', 
     ],
   );
 });
+
+test('bounds boundary whitespace at eight and safely under-splits longer runs', () => {
+  const eight = 'Did we ship the graph fix        and        is it live?';
+  assert.deepEqual(decompose(eight), [
+    { text: 'Did we ship the graph fix', start: 0, end: 25 },
+    { text: 'is it live?', start: 44, end: 55 },
+  ]);
+
+  const nine = 'Did we ship the graph fix         and         is it live?';
+  assert.deepEqual(decompose(nine), [{ text: nine, start: 0, end: nine.length }]);
+});

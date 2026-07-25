@@ -16,7 +16,9 @@ function decompose(prompt) {
   if (typeof prompt !== 'string') throw new TypeError('prompt must be a string');
   if (!prompt.trim()) return [];
 
-  const boundaries = /,?\s+(?:and\s+)?then\s+|,\s*(?:and|but)\s+|;\s*|\s+and\s+(?=(?:is|are|was|were|what|where|who|show|find|check|did|does|do|has|have|can|will)\b)/giu;
+  // Whitespace runs are bounded to keep the scan linear (CodeQL js/polynomial-redos);
+  // a boundary buried in 9+ spaces stays unsplit, which under-splits — the safe direction.
+  const boundaries = /,?\s{1,8}(?:and\s{1,8})?then\s{1,8}|,\s{0,8}(?:and|but)\s{1,8}|;\s{0,8}|\s{1,8}and\s{1,8}(?=(?:is|are|was|were|what|where|who|show|find|check|did|does|do|has|have|can|will)\b)/giu;
   const clauses = [];
   let cursor = 0;
   let match;

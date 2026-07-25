@@ -6,9 +6,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const Module = require('node:module');
+const vm = require('node:vm');
 const Ajv2020 = require('ajv/dist/2020');
 const {
-  readRegularNoFollow, serializeJsonl, sha256Text, verifyFrozenRuntime, writePrivate,
+  readRegularNoFollow, sha256Text, writePrivate,
 } = require('./extract-corpus');
 
 let runtimeCache = null;
@@ -39,6 +41,12 @@ const FROZEN = Object.freeze({
   }),
 });
 
+const FROZEN_SCHEMAS = Object.freeze({
+  'replay-artifact.schema.json': '7325423b923b59e930f2714a0218d4f596b13dbc',
+  'replay-corpus.schema.json': '8381739e9ecc063b5d4f24ff8d411bf28f716e84',
+  'replay-manifest.schema.json': '0563e2b0dec30584caa84d8fc031bbac9a6fcbf9',
+});
+
 function readJsonlText(text, label) {
   const rows = [];
   for (const [index, line] of text.split('\n').entries()) {
@@ -66,25 +74,145 @@ function git(repoPath, args) {
   return execFileSync('git', ['-C', repoPath, ...args], { encoding: 'utf8' }).trim();
 }
 
-function frozenRuntime(repoPath = ROOT) {
-  if (runtimeCache) return runtimeCache;
-  verifyFrozenRuntime(repoPath);
-  const capability = require('../src/capability');
-  const entityMatch = require('../src/entity-match');
-  runtimeCache = Object.freeze({
-    canonicalize: require('../src/receipts').canonicalize,
-    createChatClient: require('../src/llm').createChatClient,
-    createConfiguredClaimDetector: require('../src/claim-detector').createConfiguredClaimDetector,
-    createEvidenceContactReceipt: require('../src/evidence').createEvidenceContactReceipt,
-    evaluateFinalization: require('../src/finalization').evaluateFinalization,
-    loadAuthorityPolicy: require('../src/authority').loadAuthorityPolicy,
+function decodeRead(bytes, options) {
+  const encoding = typeof options === 'string' ? options : options && options.encoding;
+  return encoding ? bytes.toString(encoding) : Buffer.from(bytes);
+}
+
+function verifyFrozenReplayRuntime(repoPath = ROOT) {
+  const repo = fs.realpathSync(repoPath);
+  if (repo !== fs.realpathSync(ROOT)) {
+    throw new Error('--repo must identify the repository executing this replay harness');
+  }
+  const commit = git(repo, ['rev-parse', FROZEN.commit]);
+  const tree = git(repo, ['rev-parse', `${FROZEN.commit}^{tree}`]);
+  if (commit !== FROZEN.commit || tree !== FROZEN.tree) throw new Error('frozen commit or tree mismatch');
+  return FROZEN;
+}
+
+function createFrozenTreeLoader(repoPath, tree) {
+  const repo = fs.realpathSync(repoPath);
+  const nativeRequire = Module.createRequire(path.join(repo, 'scripts', 'replay.js'));
+  const cache = new Map();
+  const loadedBlobs = new Map();
+
+  function normalizeTreePath(value) {
+    const normalized = path.posix.normalize(value);
+    if (!normalized || normalized === '..' || normalized.startsWith('../') || path.posix.isAbsolute(normalized)) {
+      throw new Error(`invalid frozen tree path: ${value}`);
+    }
+    return normalized;
+  }
+
+  function read(relative) {
+    const normalized = normalizeTreePath(relative);
+    return execFileSync('git', ['-C', repo, 'show', `${tree}:${normalized}`]);
+  }
+
+  function exists(relative) {
+    try {
+      execFileSync('git', ['-C', repo, 'cat-file', '-e', `${tree}:${normalizeTreePath(relative)}`], {
+        stdio: 'ignore',
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function resolveRelative(parent, request) {
+    const base = normalizeTreePath(path.posix.join(path.posix.dirname(parent), request));
+    const candidates = path.posix.extname(base)
+      ? [base]
+      : [base, `${base}.js`, `${base}.json`, `${base}/index.js`, `${base}/index.json`];
+    const resolved = candidates.find(exists);
+    if (!resolved) throw new Error(`unresolved frozen require: ${parent} -> ${request}`);
+    return resolved;
+  }
+
+  function load(relative) {
+    const normalized = normalizeTreePath(relative);
+    if (cache.has(normalized)) return cache.get(normalized).exports;
+    const bytes = read(normalized);
+    const moduleRecord = { exports: {}, filename: path.join(repo, normalized), id: normalized, loaded: false };
+    cache.set(normalized, moduleRecord);
+    loadedBlobs.set(normalized, git(repo, ['rev-parse', `${tree}:${normalized}`]));
+    try {
+      if (normalized.endsWith('.json')) {
+        moduleRecord.exports = JSON.parse(bytes.toString('utf8'));
+        moduleRecord.loaded = true;
+        return moduleRecord.exports;
+      }
+      let source = bytes.toString('utf8');
+      if (source.startsWith('#!')) source = source.replace(/^#!.*(?:\r?\n|$)/u, '');
+      const filename = moduleRecord.filename;
+      const exactFs = Object.create(fs);
+      Object.defineProperty(exactFs, 'readFileSync', {
+        value(file, options) {
+          if (path.resolve(String(file)) === path.resolve(filename)) return decodeRead(bytes, options);
+          return fs.readFileSync(file, options);
+        },
+      });
+      const localRequire = (request) => {
+        if (request.startsWith('./') || request.startsWith('../')) {
+          return load(resolveRelative(normalized, request));
+        }
+        if (request === 'fs' || request === 'node:fs') return exactFs;
+        return nativeRequire(request);
+      };
+      localRequire.resolve = nativeRequire.resolve;
+      const wrapper = vm.runInThisContext(Module.wrap(source), { filename });
+      wrapper.call(
+        moduleRecord.exports,
+        moduleRecord.exports,
+        localRequire,
+        moduleRecord,
+        filename,
+        path.dirname(filename),
+      );
+      moduleRecord.loaded = true;
+      return moduleRecord.exports;
+    } catch (error) {
+      cache.delete(normalized);
+      loadedBlobs.delete(normalized);
+      throw error;
+    }
+  }
+
+  return Object.freeze({ load, loadedBlobs, read });
+}
+
+function createFrozenReplayRuntime(repoPath = ROOT) {
+  verifyFrozenReplayRuntime(repoPath);
+  const loader = createFrozenTreeLoader(repoPath, FROZEN.tree);
+  const capability = loader.load('src/capability.js');
+  const entityMatch = loader.load('src/entity-match.js');
+  const runtime = {
+    canonicalize: loader.load('src/receipts.js').canonicalize,
+    createChatClient: loader.load('src/llm.js').createChatClient,
+    createConfiguredClaimDetector: loader.load('src/claim-detector.js').createConfiguredClaimDetector,
+    createEvidenceContactReceipt: loader.load('src/evidence.js').createEvidenceContactReceipt,
+    evaluateFinalization: loader.load('src/finalization.js').evaluateFinalization,
+    loadAuthorityPolicy: loader.load('src/authority.js').loadAuthorityPolicy,
     CAPABILITY_MAP_VERSION: capability.CAPABILITY_MAP_VERSION,
     NORMALIZER_VERSION: capability.NORMALIZER_VERSION,
     capabilityMapSha: capability.capabilityMapSha,
     ENTITY_MATCHER_VERSION: entityMatch.ENTITY_MATCHER_VERSION,
     entityMatcherSha: entityMatch.entityMatcherSha,
-  });
+    loaded_project_blobs: Object.freeze(Object.fromEntries(loader.loadedBlobs)),
+  };
+  return Object.freeze(runtime);
+}
+
+function frozenRuntime(repoPath = ROOT) {
+  if (runtimeCache) return runtimeCache;
+  runtimeCache = createFrozenReplayRuntime(repoPath);
   return runtimeCache;
+}
+
+function serializeReplayJsonl(rows) {
+  const { canonicalize } = frozenRuntime();
+  return `${rows.map((row) => canonicalize(row)).join('\n')}\n`;
 }
 
 function readFrozenInputBuffer(repoPath, inputPath, frozenPath) {
@@ -158,7 +286,11 @@ function validateFrozenCheckout(repoPath) {
 }
 
 function schemaValidator(repoPath, name) {
-  const schema = JSON.parse(fs.readFileSync(path.join(repoPath, 'schema', name), 'utf8'));
+  const blob = FROZEN_SCHEMAS[name];
+  if (!blob) throw new Error(`unfrozen replay schema: ${name}`);
+  const schema = JSON.parse(execFileSync(
+    'git', ['-C', repoPath, 'cat-file', 'blob', blob], { encoding: 'utf8' },
+  ));
   const ajv = new Ajv2020({ strict: false });
   ajv.addFormat('date-time', {
     type: 'string',
@@ -337,7 +469,7 @@ async function replayRows({ corpusRows, manifest, detector, policy, labelsText =
     });
   }
 
-  const artifactText = serializeJsonl(artifactRows);
+  const artifactText = serializeReplayJsonl(artifactRows);
   const artifactSha256 = sha256Text(artifactText);
   const summary = {
     schema_version: 1,
@@ -504,15 +636,20 @@ if (require.main === module) {
 
 module.exports = {
   FROZEN,
+  FROZEN_SCHEMAS,
   HARNESS_VERSION,
   assertFrozenInputFile,
   buildProvenanceManifest,
   createFrozenDetector,
+  createFrozenReplayRuntime,
   createLocalFetch,
   help,
   main,
   replayRows,
+  schemaValidator,
+  serializeReplayJsonl,
   validateFrozenCheckout,
   validateManifestForCorpus,
+  verifyFrozenReplayRuntime,
   writePrivate,
 };

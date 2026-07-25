@@ -1,0 +1,21 @@
+schema_version: "1.0"
+id: authoritative-source-before-memory
+version: "1.0.0"
+description: Require the configured authoritative recall source before ad-hoc repository or conversational-memory reconstruction.
+required_capabilities: [inject_before_action, intercept_tool_call, deny_tool_call, inspect_tool_result, block_completion]
+rules:
+  - id: authoritative-recall-before-reconstruction
+    trigger:
+      when_family: historical
+      attempted_families: [repository, structural, unknown]
+      tool_names: [Read, Grep, Glob, Bash, Agent]
+    required_family: historical
+    preferred_route: mcp__gbrain__query
+    sanctioned_fallback: session history search with explicit authoritative-source-unavailable disclosure
+    satisfies: real_result_only
+    denial_template:
+      unmet: "Authoritative history for {subject} is still unmet. Why: {why}"
+      corrective: "Run {preferred_route} for {subject}."
+      alternative: "Use the sanctioned fallback ({sanctioned_fallback}) or explicitly abstain with a reason."
+    why: "wrong-source reflex: repeated agent sessions reconstructed prior decisions from code or chat instead of querying the maintained decision source"
+    ttl: 86400

@@ -1,0 +1,74 @@
+schema_version: "1.0"
+id: code-intelligence-before-raw-search
+version: "1.0.0"
+description: Require the matching structural code-intelligence operation before raw repository search.
+required_capabilities: [inject_before_action, intercept_tool_call, deny_tool_call, inspect_tool_result, block_completion]
+rules:
+  - id: callers-before-raw-search
+    trigger:
+      when_family: structural
+      obligation_patterns: ["\\b(?:callers of|who calls)\\b"]
+      attempted_families: [repository, unknown]
+      tool_names: [Read, Grep, Glob, Bash, Agent]
+    required_family: structural
+    preferred_route: mcp__gbrain__code_callers
+    sanctioned_fallback: Grep/Read only after declaring the graph unavailable or stale
+    satisfies: real_result_only
+    denial_template: &denial
+      unmet: "Structural evidence for {subject} is still unmet. Why: {why}"
+      corrective: "Run {preferred_route} for {subject}."
+      alternative: "Use the sanctioned fallback ({sanctioned_fallback}) or explicitly abstain with a reason."
+    why: &why "wrong-source reflex: the S267 audit found roughly 200 Bash calls per session re-deriving indexed code facts"
+    ttl: &ttl 86400
+  - id: callees-before-raw-search
+    trigger:
+      when_family: structural
+      obligation_patterns: ["\\b(?:callees of|depends on)\\b"]
+      attempted_families: [repository, unknown]
+      tool_names: [Read, Grep, Glob, Bash, Agent]
+    required_family: structural
+    preferred_route: mcp__gbrain__code_callees
+    sanctioned_fallback: Grep/Read only after declaring the graph unavailable or stale
+    satisfies: real_result_only
+    denial_template: *denial
+    why: *why
+    ttl: *ttl
+  - id: references-before-raw-search
+    trigger:
+      when_family: structural
+      obligation_patterns: ["\\b(?:who imports|importers of|references to|implements)\\b"]
+      attempted_families: [repository, unknown]
+      tool_names: [Read, Grep, Glob, Bash, Agent]
+    required_family: structural
+    preferred_route: mcp__gbrain__code_refs
+    sanctioned_fallback: Grep/Read only after declaring the graph unavailable or stale
+    satisfies: real_result_only
+    denial_template: *denial
+    why: *why
+    ttl: *ttl
+  - id: definition-before-raw-search
+    trigger:
+      when_family: structural
+      obligation_patterns: ["\\b(?:where is .+ defined|definition of)\\b"]
+      attempted_families: [repository, unknown]
+      tool_names: [Read, Grep, Glob, Bash, Agent]
+    required_family: structural
+    preferred_route: mcp__gbrain__code_def
+    sanctioned_fallback: Grep/Read only after declaring the graph unavailable or stale
+    satisfies: real_result_only
+    denial_template: *denial
+    why: *why
+    ttl: *ttl
+  - id: impact-before-raw-search
+    trigger:
+      when_family: structural
+      obligation_patterns: ["\\b(?:blast radius|impact of)\\b"]
+      attempted_families: [repository, unknown]
+      tool_names: [Read, Grep, Glob, Bash, Agent]
+    required_family: structural
+    preferred_route: mcp__gbrain__code_blast
+    sanctioned_fallback: Grep/Read only after declaring the graph unavailable or stale
+    satisfies: real_result_only
+    denial_template: *denial
+    why: *why
+    ttl: *ttl

@@ -1,0 +1,24 @@
+schema_version: "1.0"
+id: prerequisite-before-protected-ops
+version: "1.0.0"
+description: Require a real prerequisite read before protected infrastructure or deployment operations.
+required_capabilities: [intercept_tool_call, deny_tool_call, request_human_approval, inspect_tool_result, block_completion]
+rules:
+  - id: access-map-before-protected-operation
+    trigger:
+      tool_names: [Bash]
+      input_patterns:
+        - "(?:terraform|tofu)\\s+apply"
+        - "\\b(?:kubectl|helm)\\b.*\\b(?:apply|delete|upgrade|install)\\b"
+        - "\\b(?:deploy|release|promote)\\b"
+        - "\\b(?:ssh|scp|rsync)\\b.*\\b(?:prod|production)\\b"
+    required_family: repository
+    preferred_route: Read .leadline/access-map.md
+    sanctioned_fallback: ASK the user for authorization and record the reason
+    satisfies: real_result_only
+    denial_template:
+      unmet: "The protected-operation prerequisite is still unmet. Why: {why}"
+      corrective: "Run {preferred_route} and read the real result."
+      alternative: "Use the sanctioned fallback ({sanctioned_fallback}) or explicitly abstain with a reason."
+    why: "access-control burn receipt: protected Bash was attempted before the project access map was read, requiring a deny-and-correct gate"
+    ttl: 900

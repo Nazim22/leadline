@@ -42,8 +42,10 @@ function verifyFrozenRuntime(repoPath = ROOT) {
     const expected = execFileSync('git', ['-C', repo, 'show', `${FROZEN_COMMIT}:${relative}`]);
     if (!actual.equals(expected)) throw new Error(`${relative} does not match the frozen object`);
   }
-  const status = execFileSync('git', ['-C', repo, 'status', '--porcelain=v1', '--', 'src', 'policy'], { encoding: 'utf8' });
-  if (status.trim()) throw new Error('src/policy working tree differs from the frozen object');
+  const status = execFileSync(
+    'git', ['-C', repo, 'status', '--porcelain=v1', '--', ...paths], { encoding: 'utf8' },
+  );
+  if (status.trim()) throw new Error('a frozen src/policy path differs from the frozen object');
 }
 
 function frozenRuntime(repoPath = ROOT) {

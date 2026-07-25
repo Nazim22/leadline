@@ -8,7 +8,7 @@ const path = require('node:path');
 const Ajv2020 = require('ajv/dist/2020');
 const { loadAuthorityPolicy } = require('../src/authority');
 const {
-  extractCorpusRows, parseQuotas, parseTranscript, serializeJsonl, sha256Text,
+  extractCorpusRows, parseQuotas, parseTranscript, serializeJsonl, sha256Text, verifyFrozenRuntime,
 } = require('../scripts/extract-corpus');
 const {
   assertFrozenInputFile, buildProvenanceManifest, createFrozenDetector, createLocalFetch,
@@ -105,6 +105,10 @@ function fakeDetector() {
     },
   };
 }
+
+test('frozen runtime allows unrelated source additions while verifying every frozen path', () => {
+  assert.doesNotThrow(() => verifyFrozenRuntime(ROOT));
+});
 
 test('corpus extraction is seeded, stratified, sanitized before persistence, and schema-valid', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'leadline-extract-'));

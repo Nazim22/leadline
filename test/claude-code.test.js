@@ -89,6 +89,38 @@ test('advisory PostToolUse feedback never blocks the Claude loop', () => {
   assert.match(feedback.hookSpecificOutput.additionalContext, /Receipt failed/);
 });
 
+test('advisory Stop surfaces an unmet obligation without blocking', () => {
+  const target = project();
+  installClaudeCode({ projectDir: target, packageRoot: root, mode: 'advisory' });
+  handleClaudeHook(event(target, 'UserPromptSubmit', { prompt: 'Who calls performSync?' }), { projectDir: target, packageRoot: root });
+
+  const stopped = handleClaudeHook(event(target, 'Stop', {
+    stop_hook_active: false, last_assistant_message: 'Done.',
+  }), { projectDir: target, packageRoot: root });
+
+  assert.equal(stopped.decision, undefined);
+  assert.equal(stopped.hookSpecificOutput, undefined);
+  assert.match(stopped.systemMessage, /Unmet obligation/);
+});
+
+test('advisory Stop stays quiet when every obligation is satisfied', () => {
+  const target = project();
+  installClaudeCode({ projectDir: target, packageRoot: root, mode: 'advisory' });
+  handleClaudeHook(event(target, 'UserPromptSubmit', { prompt: 'Who calls performSync?' }), { projectDir: target, packageRoot: root });
+  const graphInput = event(target, 'PreToolUse', {
+    tool_name: 'mcp__gbrain__code_callers', tool_input: { symbol: 'performSync' }, tool_use_id: 'tool-right',
+  });
+  handleClaudeHook(graphInput, { projectDir: target, packageRoot: root });
+  handleClaudeHook(event(target, 'PostToolUse', {
+    tool_name: 'mcp__gbrain__code_callers', tool_input: { symbol: 'performSync' },
+    tool_response: { callers: ['runSync calls performSync'] }, tool_use_id: 'tool-right',
+  }), { projectDir: target, packageRoot: root });
+
+  assert.deepEqual(handleClaudeHook(event(target, 'Stop', {
+    stop_hook_active: false, last_assistant_message: 'Verified callers.',
+  }), { projectDir: target, packageRoot: root }), {});
+});
+
 test('UserPromptSubmit injects a compact route block and stays silent without obligations', () => {
   const target = project();
   installClaudeCode({ projectDir: target, packageRoot: root, mode: 'enforce' });

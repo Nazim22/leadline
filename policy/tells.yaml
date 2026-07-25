@@ -30,7 +30,7 @@ tells:
   - id: repo-bytes
     family: repository
     terminal: true
-    phrases: ["exact contents", "current contents", "show the file", "exact file", "exact implementation", "add a docstring", "what does line", "line * of", "exact line", "git diff", "show diff", "at commit", "literal value", "the bytes"]
+    phrases: ["exact contents", "current contents", "show the file", "exact file", "exact implementation", "add a docstring", "what does line", "line * of", "exact line", "show diff", "at commit", "literal value", "the bytes"]
 
   # ---- runtime: require a runtime noun or temporal/status qualifier ----
   - id: runtime-state

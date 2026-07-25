@@ -97,6 +97,8 @@ npx github:Nazim22/leadline init --claude-code             # flip to enforce
 
 Dry-run mode is the benchmark: it watches your own sessions and shows you your agent’s wrong-source calls, empty receipts, and unproven “done” claims — your data, your numbers — before a single call is ever denied.
 
+**Platform note (stated honestly).** The router, matcher, planner, receipts, and Claude Code hooks run anywhere Node ≥18 runs. The frozen **exam / replay / label-corpus** harness — `npm run bench`, `scripts/replay.js`, `scripts/label-corpus.js`, `scripts/score-exam.js` — requires **Linux** (`/proc/self/fd` + `O_NOFOLLOW` for race-safe I/O); on other platforms those suites error with `race-safe exam I/O requires Linux /proc/self/fd and O_NOFOLLOW`. Symlink-rejection paths in the replay/provenance suites additionally need symlink creation rights (e.g. Windows Developer Mode). This is a harness/platform constraint, not a defect in the router — the enforcement logic it certifies is platform-independent.
+
 ## Policy packs — enforcement with receipts
 
 Every shipped rule carries a `why` field with the real measurement behind it. Packs without receipts are opinions.

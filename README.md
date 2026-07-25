@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-0E8FA6?style=flat-square" alt="MIT license" />
   <img src="https://img.shields.io/badge/tests-218%2F218-4FB477?style=flat-square" alt="218/218 tests passing" />
-  <img src="https://img.shields.io/badge/claude--code-plugin-B98A34?style=flat-square" alt="Claude Code plugin" />
+  <img src="https://img.shields.io/badge/claude--code-hooks-B98A34?style=flat-square" alt="Claude Code hooks" />
   <img src="https://img.shields.io/badge/PRs-bring_your_burn_history-0E8FA6?style=flat-square" alt="PRs welcome" />
 </p>
 
@@ -59,7 +59,7 @@ Receipt failed (unbound): PostToolUse must match an accepted PreToolUse call in 
 * **Grade the receipt** — results are checked for substance, relevance, and freshness. Empty results, input echoes, `"No results found"` prose, and transport metadata (`status: 200`, `is_error: false`) satisfy nothing. A structured zero (`{count: 0, callers: []}`) is honest evidence and counts.
 * **Gate completion** — the Stop hook refuses “done” while obligations are unmet, twice; then warns and yields.
 * **Receipts can’t be forged** — `PostToolUse` results bind to the accepted `PreToolUse` call by `tool_use_id` + canonical argument digest, consumed exactly once.
-* **Everything is traced** — one JSONL line per decision; `leadline trace` renders the session story with counts: denials, corrections followed, abstentions, gaming attempts caught.
+* **Enforcement decisions are traced** — one JSONL line per decision; `leadline trace` renders the session story with counts: denials, corrections followed, abstentions, gaming attempts caught.
 
 Failure semantics are mode-aware: **enforcement fails closed** (a crashed hook can’t silently disable enforcement), **advisory fails open** (a dry run can never block you).
 
@@ -75,7 +75,7 @@ Failure semantics are mode-aware: **enforcement fails closed** (a crashed hook c
  "done" ─▶ Stop ─────────────▶ obligations met? · else DENY ×2 → warn-and-allow
 ```
 
-Four evidence families, mapped to *your* tools via policy packs:
+Four evidence families, mapped by configured routes (`policy/routes.yaml`) and enforced through policy packs:
 
 | family | answers | typical route |
 | --- | --- | --- |
@@ -87,11 +87,13 @@ Four evidence families, mapped to *your* tools via policy packs:
 ## Get started (60 seconds)
 
 ```bash
-npx leadline init --claude-code --dry-run    # advisory: observes, never blocks
+npx github:Nazim22/leadline init --claude-code --dry-run   # advisory: observes, never blocks
 # work normally for a while, then:
-npx leadline trace --project . --session <id>  # what WOULD have been caught
-npx leadline init --claude-code              # flip to enforce
+npx github:Nazim22/leadline trace --project . --session <id>  # what WOULD have been caught
+npx github:Nazim22/leadline init --claude-code             # flip to enforce
 ```
+
+(An npm package — plain `npx leadline` — is coming; the GitHub specifier above works today.)
 
 Dry-run mode is the benchmark: it watches your own sessions and shows you your agent’s wrong-source calls, empty receipts, and unproven “done” claims — your data, your numbers — before a single call is ever denied.
 
@@ -123,4 +125,4 @@ Packs are plain YAML with a JSON-Schema contract (`schema/policy-pack.schema.jso
 
 ## License
 
-MIT. Every claim above has a receipt — that’s rather the point.
+MIT. Claims should carry receipts — that’s rather the point.

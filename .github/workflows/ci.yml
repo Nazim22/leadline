@@ -2,12 +2,21 @@
 #
 # CONTRIBUTING.md states: "There is no hidden CI magic yet: the suite you run
 # locally is the gate." This workflow runs that exact same gate on GitHub's
-# Linux runner (ubuntu-latest) so every push/PR proves the suite is green
-# before review — no behavior change, no new dependencies, no core code touched.
+# Linux runner so every push/PR proves the suite is green before review.
 #
-# Note: the exam/replay/label-corpus suites require Linux (/proc/self/fd +
-# O_NOFOLLOW) and are exercised on the same Linux host class here, so CI
-# reflects what contributors already run locally on supported platforms.
+# Two constraints this file has to respect:
+#
+#   1. fetch-depth: 0 is LOAD-BEARING. The replay/provenance suites verify the
+#      sealed exam runtime by reading its exact Git objects at commit 8488cb3
+#      (see docs/EXAM.md). That commit is reachable only through the full ref
+#      graph. actions/checkout defaults to a shallow, single-branch clone, which
+#      resolves to one commit with no other refs, so `git rev-parse 8488cb3^{tree}`
+#      fails and 7 provenance tests fail with "unknown revision". Do not
+#      "optimise" this back to a shallow clone.
+#
+#   2. The corpus labeling harness (scripts/label-corpus.js) hard-requires Linux
+#      (/proc/self/fd + O_NOFOLLOW), so the matrix stays on ubuntu-latest. The
+#      router, the Claude Code hooks and `npm run bench` are platform-independent.
 
 name: CI
 
@@ -16,18 +25,29 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: this workflow only ever reads the repository.
+permissions:
+  contents: read
+
 jobs:
   test:
-    name: npm test
+    name: npm test (node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # package.json declares engines.node >= 18. Prove it rather than assert it.
+        node: [18, 20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # required: sealed-runtime provenance tests read Git objects at 8488cb3
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install dependencies
@@ -35,3 +55,6 @@ jobs:
 
       - name: Run test suite
         run: npm test
+
+      - name: Run frozen benchmark
+        run: npm run bench

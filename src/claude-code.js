@@ -324,6 +324,7 @@ function handleClaudeHookLocked(input, { projectDir, packageRoot }) {
   appendTrace(traces, decision.trace);
   if (decision.block) return { decision: 'block', reason: decision.message };
   if (decision.trace?.receipt?.anti_lockup_downgrade) return { systemMessage: decision.message };
+  if (engine.mode === 'advisory' && decision.message) return { systemMessage: decision.message };
   return {};
 }
 

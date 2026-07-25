@@ -189,7 +189,9 @@ function parseHttpProbeArgs(executable, args) {
       continue;
     }
     if (flags.has(arg) || (executable === 'curl' && /^-[fsSIL]+$/u.test(arg))) {
-      if (arg === '-f' || arg === '--fail' || /^-[fsSIL]*f[fsSIL]*$/u.test(arg)) hasFailFlag = true;
+      // "bundle contains -f" as a linear check: the ambiguous [fsSIL]*f[fsSIL]* form
+      // is polynomial under backtracking (CodeQL js/polynomial-redos).
+      if (arg === '-f' || arg === '--fail' || (/^-[fsSIL]+$/u.test(arg) && arg.includes('f'))) hasFailFlag = true;
       continue;
     }
     if (valueFlags.has(arg)) {

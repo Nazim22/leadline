@@ -4,12 +4,39 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const Module = require('node:module');
+const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..');
-const FROZEN_COMMIT = '8488cb333157208e9781f8d3c32ea0dda587a368';
-let runtimeCache = null;
+let extractionRuntimeCache = null;
 let privateWriteCounter = 0;
+
+const EXTRACTION_RUNTIME = Object.freeze({
+  version: 'extraction-runtime-v2',
+  entries: Object.freeze(['src/receipts.js', 'src/claims.js', 'src/evidence.js']),
+  blobs: Object.freeze({
+    'src/capability.js': Object.freeze({
+      git_blob: '41160296cf91fe6c97293da8247c19653367c5bb',
+      sha256: '40a110a3c120c298b398de477fb63d147a5aa2d8f64e5d0cd986d15ffd5f09a7',
+    }),
+    'src/claims.js': Object.freeze({
+      git_blob: '3aa8352239a81c45850a7b9dca9a4a153274728f',
+      sha256: 'fba5fa3719704caf6065640503cffb9e9e549fd32fbac7eac974be35abdb737e',
+    }),
+    'src/entity-match.js': Object.freeze({
+      git_blob: 'bd9f752986d5076d257e388426763bee78e26868',
+      sha256: 'af0a211393e94c8f3abff612b5421f71c1b5d08d92818e9b1fb514c7cd27efdd',
+    }),
+    'src/evidence.js': Object.freeze({
+      git_blob: '22a60c1df5f82644c470138f7ac50c0ea13b1acf',
+      sha256: '3334559a118c1714183687a88aebc42998ee26dd7c5870f73036299c615d04c7',
+    }),
+    'src/receipts.js': Object.freeze({
+      git_blob: 'ec509af77e3182eefad7678287c799ec2d849b67',
+      sha256: 'dff3f1b020b493356984ee5b1d4acdeb8f48dbfdaceba9f7a2d1ba50babab60d',
+    }),
+  }),
+});
 
 const STRATA = Object.freeze([
   'keyword_positive', 'keyword_negative', 'quotes_code', 'subagent_process',
@@ -31,32 +58,168 @@ function readRegularNoFollow(file, label = file) {
   }
 }
 
-function verifyFrozenRuntime(repoPath = ROOT) {
-  const repo = fs.realpathSync(repoPath);
-  if (repo !== fs.realpathSync(ROOT)) throw new Error('--repo must identify the harness checkout');
-  const paths = execFileSync(
-    'git', ['-C', repo, 'ls-tree', '-r', '--name-only', FROZEN_COMMIT, '--', 'src', 'policy'], { encoding: 'utf8' },
-  ).split('\n').filter(Boolean);
-  for (const relative of paths) {
-    const actual = readRegularNoFollow(path.join(repo, relative), relative);
-    const expected = execFileSync('git', ['-C', repo, 'show', `${FROZEN_COMMIT}:${relative}`]);
-    if (!actual.equals(expected)) throw new Error(`${relative} does not match the frozen object`);
-  }
-  const status = execFileSync(
-    'git', ['-C', repo, 'status', '--porcelain=v1', '--', ...paths], { encoding: 'utf8' },
-  );
-  if (status.trim()) throw new Error('a frozen src/policy path differs from the frozen object');
+function localRequireSpecifiers(source) {
+  const specifiers = [];
+  const pattern = /\brequire\s*\(\s*(['"])(\.[^'"]*)\1\s*\)/gu;
+  for (const match of source.matchAll(pattern)) specifiers.push(match[2]);
+  return specifiers;
 }
 
-function frozenRuntime(repoPath = ROOT) {
-  if (runtimeCache) return runtimeCache;
-  verifyFrozenRuntime(repoPath);
-  runtimeCache = Object.freeze({
-    canonicalize: require('../src/receipts').canonicalize,
-    detectClaims: require('../src/claims').detectClaims,
-    redactSecrets: require('../src/evidence').redactSecrets,
+function resolveLocalRequire(repo, fromRelative, specifier) {
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromRelative), specifier));
+  if (base === '..' || base.startsWith('../') || path.posix.isAbsolute(base)) {
+    throw new Error(`local require escapes runtime root: ${fromRelative} -> ${specifier}`);
+  }
+  const candidates = path.posix.extname(base)
+    ? [base]
+    : [base, `${base}.js`, `${base}.json`, `${base}/index.js`, `${base}/index.json`];
+  for (const relative of candidates) {
+    const file = path.join(repo, relative);
+    try {
+      if (fs.lstatSync(file).isFile()) return relative;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  throw new Error(`unresolved local require: ${fromRelative} -> ${specifier}`);
+}
+
+function discoverLocalRequireClosure(repoPath, entries) {
+  const repo = fs.realpathSync(repoPath);
+  const pending = [...entries];
+  const closure = new Set();
+  while (pending.length > 0) {
+    const relative = pending.shift();
+    if (closure.has(relative)) continue;
+    const source = readRegularNoFollow(path.join(repo, relative), relative);
+    closure.add(relative);
+    if (!relative.endsWith('.js')) continue;
+    for (const specifier of localRequireSpecifiers(source.toString('utf8'))) {
+      const dependency = resolveLocalRequire(repo, relative, specifier);
+      if (!closure.has(dependency)) pending.push(dependency);
+    }
+  }
+  return closure;
+}
+
+function gitBlobSha1(bytes) {
+  return crypto.createHash('sha1')
+    .update(Buffer.from(`blob ${bytes.length}\0`, 'utf8'))
+    .update(bytes)
+    .digest('hex');
+}
+
+function snapshotRuntimeManifest(repoPath, manifest) {
+  const repo = fs.realpathSync(repoPath);
+  const expectedPaths = Object.keys(manifest.blobs).sort();
+  const actualPaths = [...discoverLocalRequireClosure(repo, manifest.entries)].sort();
+  if (JSON.stringify(actualPaths) !== JSON.stringify(expectedPaths)) {
+    throw new Error(`runtime closure does not match ${manifest.version}`);
+  }
+  const sources = new Map();
+  for (const relative of expectedPaths) {
+    const bytes = readRegularNoFollow(path.join(repo, relative), relative);
+    const expected = manifest.blobs[relative];
+    const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+    if (gitBlobSha1(bytes) !== expected.git_blob || sha256 !== expected.sha256) {
+      throw new Error(`${relative} does not match ${manifest.version}`);
+    }
+    sources.set(relative, bytes);
+  }
+  return Object.freeze({ manifest, sources });
+}
+
+function createExactSourceLoader(repoPath, sources) {
+  const repo = fs.realpathSync(repoPath);
+  const nativeRequire = Module.createRequire(path.join(repo, 'scripts', 'extract-corpus.js'));
+  const cache = new Map();
+
+  function resolve(parent, request) {
+    const base = path.posix.normalize(path.posix.join(path.posix.dirname(parent), request));
+    if (base === '..' || base.startsWith('../') || path.posix.isAbsolute(base)) {
+      throw new Error(`local require escapes runtime root: ${parent} -> ${request}`);
+    }
+    const candidates = path.posix.extname(base)
+      ? [base]
+      : [base, `${base}.js`, `${base}.json`, `${base}/index.js`, `${base}/index.json`];
+    const resolved = candidates.find((candidate) => sources.has(candidate));
+    if (!resolved) throw new Error(`unverified local require: ${parent} -> ${request}`);
+    return resolved;
+  }
+
+  function load(relative) {
+    if (!sources.has(relative)) throw new Error(`source is outside the verified runtime: ${relative}`);
+    if (cache.has(relative)) return cache.get(relative).exports;
+    const bytes = sources.get(relative);
+    const filename = path.join(repo, relative);
+    const moduleRecord = { exports: {}, filename, id: relative, loaded: false };
+    cache.set(relative, moduleRecord);
+    try {
+      if (relative.endsWith('.json')) {
+        moduleRecord.exports = JSON.parse(bytes.toString('utf8'));
+        moduleRecord.loaded = true;
+        return moduleRecord.exports;
+      }
+      let source = bytes.toString('utf8');
+      if (source.startsWith('#!')) source = source.replace(/^#!.*(?:\r?\n|$)/u, '');
+      const exactFs = Object.create(fs);
+      Object.defineProperty(exactFs, 'readFileSync', {
+        value(file, options) {
+          if (path.resolve(String(file)) === path.resolve(filename)) {
+            const encoding = typeof options === 'string' ? options : options && options.encoding;
+            return encoding ? bytes.toString(encoding) : Buffer.from(bytes);
+          }
+          return fs.readFileSync(file, options);
+        },
+      });
+      const localRequire = (request) => {
+        if (request.startsWith('./') || request.startsWith('../')) return load(resolve(relative, request));
+        if (request === 'fs' || request === 'node:fs') return exactFs;
+        return nativeRequire(request);
+      };
+      localRequire.resolve = nativeRequire.resolve;
+      const wrapper = vm.runInThisContext(Module.wrap(source), { filename });
+      wrapper.call(
+        moduleRecord.exports,
+        moduleRecord.exports,
+        localRequire,
+        moduleRecord,
+        filename,
+        path.dirname(filename),
+      );
+      moduleRecord.loaded = true;
+      return moduleRecord.exports;
+    } catch (error) {
+      cache.delete(relative);
+      throw error;
+    }
+  }
+
+  return Object.freeze({ load });
+}
+
+function verifyRuntimeManifest(repoPath, manifest) {
+  return snapshotRuntimeManifest(repoPath, manifest).manifest;
+}
+
+function verifyExtractionRuntime(repoPath = ROOT) {
+  const repo = fs.realpathSync(repoPath);
+  if (repo !== fs.realpathSync(ROOT)) throw new Error('--repo must identify the extraction harness checkout');
+  return verifyRuntimeManifest(repo, EXTRACTION_RUNTIME);
+}
+
+function extractionRuntime(repoPath = ROOT) {
+  if (extractionRuntimeCache) return extractionRuntimeCache;
+  const repo = fs.realpathSync(repoPath);
+  if (repo !== fs.realpathSync(ROOT)) throw new Error('--repo must identify the extraction harness checkout');
+  const snapshot = snapshotRuntimeManifest(repo, EXTRACTION_RUNTIME);
+  const loader = createExactSourceLoader(repo, snapshot.sources);
+  extractionRuntimeCache = Object.freeze({
+    canonicalize: loader.load('src/receipts.js').canonicalize,
+    detectClaims: loader.load('src/claims.js').detectClaims,
+    redactSecrets: loader.load('src/evidence.js').redactSecrets,
   });
-  return runtimeCache;
+  return extractionRuntimeCache;
 }
 
 function writePrivate(file, content) {
@@ -97,7 +260,7 @@ function stableId(prefix, ...parts) {
 }
 
 function serializeJsonl(rows) {
-  const { canonicalize } = frozenRuntime();
+  const { canonicalize } = extractionRuntime();
   return `${rows.map((row) => canonicalize(row)).join('\n')}\n`;
 }
 
@@ -119,7 +282,7 @@ function parseQuotas(value) {
 }
 
 function sanitize(value) {
-  const { redactSecrets } = frozenRuntime();
+  const { redactSecrets } = extractionRuntime();
   if (typeof value === 'string') return redactSecrets(value);
   if (Array.isArray(value)) return value.map(sanitize);
   if (value && typeof value === 'object') {
@@ -181,7 +344,7 @@ function toolIdentity(rawName) {
 }
 
 function normalizedToolResult(block, event) {
-  const { redactSecrets } = frozenRuntime();
+  const { redactSecrets } = extractionRuntime();
   const blockResult = block && block.result;
   const eventResult = event && event.toolUseResult;
   const sources = [block, blockResult, eventResult];
@@ -221,7 +384,7 @@ function listJsonlFiles(root) {
 }
 
 function strataFor(text) {
-  const { detectClaims } = frozenRuntime();
+  const { detectClaims } = extractionRuntime();
   const strata = [detectClaims(text).length > 0 ? 'keyword_positive' : 'keyword_negative'];
   if (/`|```|[“”"]/u.test(text)) strata.push('quotes_code');
   if (/\b(?:subagent|worker|background|process|job|task)\b/iu.test(text)) strata.push('subagent_process');
@@ -229,7 +392,7 @@ function strataFor(text) {
 }
 
 function parseTranscript(file, root, seed) {
-  const { redactSecrets } = frozenRuntime();
+  const { redactSecrets } = extractionRuntime();
   const relative = path.relative(root, file).split(path.sep).join('/');
   const sessionId = stableId('session', seed, relative);
   const lines = readRegularNoFollow(file, file).toString('utf8').split('\n');
@@ -355,7 +518,7 @@ function help() {
 function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   if (args.help) { process.stdout.write(help()); return; }
-  const { canonicalize } = frozenRuntime();
+  const { canonicalize } = extractionRuntime();
   const quotas = parseQuotas(args.quotas);
   const transcriptsDir = fs.realpathSync(path.resolve(args.transcripts));
   const output = path.resolve(args.output);
@@ -377,6 +540,21 @@ if (require.main === module) {
 }
 
 module.exports = {
-  STRATA, compareBytes, extractCorpusRows, help, main, parseQuotas, parseTranscript,
-  readRegularNoFollow, serializeJsonl, sha256Text, verifyFrozenRuntime, writePrivate,
+  EXTRACTION_RUNTIME,
+  STRATA,
+  compareBytes,
+  createExactSourceLoader,
+  discoverLocalRequireClosure,
+  extractCorpusRows,
+  help,
+  main,
+  parseQuotas,
+  parseTranscript,
+  readRegularNoFollow,
+  serializeJsonl,
+  sha256Text,
+  snapshotRuntimeManifest,
+  verifyExtractionRuntime,
+  verifyRuntimeManifest,
+  writePrivate,
 };

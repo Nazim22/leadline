@@ -2,7 +2,11 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { deriveCapability, CAPABILITIES, CAPABILITY_MAP_VERSION, capabilityMapSha } = require('../src/capability');
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+  deriveCapability, CAPABILITIES, CAPABILITY_MAP_VERSION, capabilityMapSha, normalizeEvidenceContact,
+} = require('../src/capability');
 
 const bash = (command) => deriveCapability({ provider: 'bash', name: 'bash', args: { command } });
 
@@ -31,6 +35,32 @@ test('a probe of a running service is runtime.health_probe', () => {
   assert.equal(bash('curl https://svc/health'), 'runtime.health_probe');
   assert.equal(bash('curl -sf http://localhost:8080/ready'), 'runtime.health_probe');
   assert.equal(bash('systemctl is-active fleet-hub'), 'runtime.health_probe');
+});
+
+test('every accepted curl short-flag bundle treats f presence exactly', () => {
+  const alphabet = ['f', 's', 'S', 'I', 'L'];
+  let bundles = [''];
+  for (let length = 1; length <= 4; length += 1) {
+    bundles = bundles.concat(bundles
+      .filter((bundle) => bundle.length === length - 1)
+      .flatMap((bundle) => alphabet.map((char) => `${bundle}${char}`)));
+  }
+  for (const bundle of bundles.filter(Boolean)) {
+    const normalized = normalizeEvidenceContact(
+      { provider: 'bash', name: 'bash', args: { command: `curl -${bundle} https://svc/health` } },
+      { exit_code: 0 },
+    );
+    assert.equal(
+      normalized.outcome_reason,
+      bundle.includes('f') ? 'probe_exit_zero' : 'http_status_missing',
+      bundle,
+    );
+  }
+});
+
+test('curl fail-bundle detection does not use the polynomial ambiguous regex', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'capability.js'), 'utf8');
+  assert.equal(source.includes('/^-[fsSIL]*f[fsSIL]*$/u.test'), false);
 });
 
 test('running tests is runtime.test_run', () => {

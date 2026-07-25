@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/adapter-capabilities.schema.json",
+  "title": "Leadline Host Adapter Capabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "inject_before_action", "intercept_tool_call", "deny_tool_call", "request_human_approval", "inspect_tool_result", "block_completion"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "mode": { "type": "string", "enum": ["ENFORCE", "PARTIAL_ENFORCE", "ADVISE", "AUDIT"] },
+    "inject_before_action": { "type": "boolean" },
+    "intercept_tool_call": { "type": "boolean" },
+    "deny_tool_call": { "type": "boolean" },
+    "request_human_approval": { "type": "boolean" },
+    "inspect_tool_result": { "type": "boolean" },
+    "block_completion": { "type": "boolean" }
+  }
+}

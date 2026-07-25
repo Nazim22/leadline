@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "policy_version": "claim-detector-v0.1",
+  "mode": "shadow",
+  "model_identity": "ollama:qwen36-nothink:latest@b0d99af8ccedab18c85324da0b2c2b453da719c76c6cc5c2320b6812d81341d5",
+  "request_timeout_ms": 15000,
+  "prompt_sha256": "dc151abe66575d98b742ce3fc132bc1e1329ab8a610cc36df449b1bdfa43a56c"
+}

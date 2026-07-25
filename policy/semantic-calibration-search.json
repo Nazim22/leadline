@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "search_version": "stage2.1-coordinate-v1",
+  "frozen_before_calibration_labels_opened": true,
+  "fixed": {
+    "normalization": "nfkc-ws-v1",
+    "similarity": "cosine-l2-v1",
+    "topk": 5,
+    "agreement_fraction": 0.6,
+    "context_policy": "current-turn-only-v1"
+  },
+  "grid": {
+    "family_floors": [0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85],
+    "family_margins": [0, 0.01, 0.02, 0.04, 0.06, 0.08, 0.12, 0.16],
+    "abstain_veto_margins": [null, 0, 0.02, 0.04, 0.06, 0.08, 0.12, 0.16]
+  },
+  "algorithm": {
+    "initialization": "Evaluate every global floor x global margin x veto tuple, using that floor and margin for all four families.",
+    "refinement": "Starting from the best eligible global tuple, optimize one family at a time in canonical family order over the full floor x margin grid, then optimize veto; repeat until unchanged or four passes.",
+    "family_order": ["historical", "structural", "repository", "runtime"],
+    "maximum_coordinate_passes": 4,
+    "candidate_ranking": "Use policy/semantic-calibration-objective.json selection and tie-break order.",
+    "infeasible_behavior": "Exit non-zero and do not write a locked production configuration."
+  },
+  "anti_leakage": {
+    "input": "calibration corpus only",
+    "eval1": "forbidden",
+    "eval2": "forbidden until locked-config commit",
+    "exemplar_edits": "forbidden after inspecting calibration labels or misses"
+  }
+}

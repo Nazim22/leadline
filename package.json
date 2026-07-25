@@ -2,14 +2,47 @@
   "name": "leadline",
   "version": "0.0.1",
   "private": true,
-  "description": "Evidence control plane for coding agents — routes each question to the right source, enforces the evidence path, and records use receipts.",
+  "description": "Evidence router & policy engine for coding agents \u2014 enforces source choice and proof-of-use through Claude Code hooks, including routes to MCP tools. Local-first; no LLM in the hook loop.",
   "license": "MIT",
+  "main": "./src/index.js",
   "bin": {
     "leadline": "./bin/leadline.js"
   },
-  "files": ["bin", "schema", "policy", "docs"],
-  "keywords": ["ai-agents", "coding-agents", "tool-routing", "evidence", "claude-code", "hooks"],
+  "scripts": {
+    "test": "node --test",
+    "bench": "node ./bin/leadline.js bench"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  },
+  "files": [
+    "bench",
+    "bin",
+    "src",
+    "schema",
+    "policy",
+    "docs"
+  ],
+  "keywords": [
+    "ai-agents",
+    "llm",
+    "claude-code",
+    "mcp",
+    "agent-guardrails",
+    "tool-use",
+    "policy-engine",
+    "evidence-router",
+    "hooks",
+    "agentic-ai",
+    "developer-tools",
+    "context-engineering",
+    "coding-agents",
+    "tool-routing"
+  ],
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
   }
 }

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/replay-manifest.schema.json",
+  "title": "Leadline frozen replay provenance manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "harness_version", "mode", "frozen", "corpus", "labels", "overrides"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "harness_version": { "const": "replay-v0.1" },
+    "mode": { "const": "coverage" },
+    "frozen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree", "capability_map", "contact_normalizer", "entity_matcher", "authority_policy"],
+      "properties": {
+        "commit": { "const": "8488cb333157208e9781f8d3c32ea0dda587a368" },
+        "tree": { "const": "1a3bd1de77558ecebf92ef4bed4a9d7bd1dfaca9" },
+        "capability_map": { "$ref": "#/$defs/component" },
+        "contact_normalizer": { "$ref": "#/$defs/component" },
+        "entity_matcher": { "$ref": "#/$defs/component" },
+        "authority_policy": { "$ref": "#/$defs/component" }
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "row_count"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "row_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "sha256", "row_count"],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "row_count": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "overrides": { "type": "object", "maxProperties": 0 }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "git_oid": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "sha256", "git_blob"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "git_blob": { "$ref": "#/$defs/git_oid" }
+      }
+    }
+  }
+}

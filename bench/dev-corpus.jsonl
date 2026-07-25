@@ -1,0 +1,8 @@
+{"id": "dev-001", "prompt": "did we build the tool-router?", "gold_route": ["historical"], "note": "Real failure trace: agent nearly spawned a scout to re-derive build-state gbrain held.", "kind": "build-state"}
+{"id": "dev-002", "prompt": "show me the callers of frameSign in the connector", "gold_route": ["structural"], "note": "Real failure trace: empty graphify call fired to unlock grep (gate-gaming).", "kind": "gate-gaming"}
+{"id": "dev-003", "prompt": "did we ship the graph-gate fix, and is it live?", "gold_route": ["historical", "runtime"], "kind": "multi-intent"}
+{"id": "dev-004", "prompt": "find callers of chargeCard then show me its exact implementation", "gold_route": ["structural", "repository"], "kind": "multi-intent"}
+{"id": "dev-005", "prompt": "add a docstring to chargeCard, don't check whether it's deployed", "gold_route": ["repository"], "kind": "negation"}
+{"id": "dev-006", "prompt": "is the cstoregenie lambda responding right now?", "gold_route": ["runtime"], "kind": "runtime"}
+{"id": "dev-007", "prompt": "what did we decide about neon minimum CU?", "gold_route": ["historical"], "kind": "recall"}
+{"id": "dev-008", "prompt": "make it better", "gold_route": [], "note": "Ambiguous → abstain.", "kind": "abstain"}

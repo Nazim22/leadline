@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/policy-pack.schema.json",
+  "title": "Leadline Policy Pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "version", "description", "required_capabilities", "rules"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "description": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "required_capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["inject_before_action", "intercept_tool_call", "deny_tool_call", "request_human_approval", "inspect_tool_result", "block_completion"]
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "trigger", "required_family", "preferred_route", "sanctioned_fallback", "satisfies", "denial_template", "why", "ttl"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "trigger": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "when_family": { "enum": ["historical", "structural", "repository", "runtime"] },
+              "attempted_families": { "type": "array", "minItems": 1, "items": { "enum": ["historical", "structural", "repository", "runtime", "unknown"] } },
+              "tool_names": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "pattern": "\\S" } },
+              "input_patterns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "pattern": "\\S" } },
+              "obligation_patterns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "pattern": "\\S" } }
+            },
+            "anyOf": [
+              { "required": ["when_family"] },
+              { "required": ["tool_names", "input_patterns"] }
+            ]
+          },
+          "required_family": { "enum": ["historical", "structural", "repository", "runtime"] },
+          "preferred_route": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "sanctioned_fallback": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "satisfies": { "enum": ["real_result_only"] },
+          "denial_template": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["unmet", "corrective", "alternative"],
+            "properties": {
+              "unmet": { "type": "string", "minLength": 1, "pattern": "\\S" },
+              "corrective": { "type": "string", "minLength": 1, "pattern": "\\S" },
+              "alternative": { "type": "string", "minLength": 1, "pattern": "\\S" }
+            }
+          },
+          "why": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "ttl": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

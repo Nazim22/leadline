@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leadline.dev/schema/use-receipt.schema.json",
+  "title": "Leadline Claim-Support Receipt",
+  "description": "Append-only evidence-contact receipt. It proves contact with a source and a policy determination; it does not prove that a model reasoned correctly from the result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "claim_id",
+    "obligation_id",
+    "claim",
+    "family",
+    "entity",
+    "source",
+    "authority_tier",
+    "tool",
+    "timestamp",
+    "freshness",
+    "result_hash",
+    "result_nonempty",
+    "entity_matched",
+    "relevance",
+    "policy_decision",
+    "failure",
+    "override_provenance"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "receipt_id": { "type": "string", "pattern": "^receipt-[a-f0-9]{24}$" },
+    "claim_id": { "type": "string", "minLength": 1 },
+    "obligation_id": { "type": "string", "minLength": 1 },
+    "claim": { "type": "string", "minLength": 1 },
+    "family": { "type": "string", "enum": ["historical", "structural", "repository", "runtime"] },
+    "entity": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "authority_tier": { "type": ["integer", "null"], "minimum": 1, "description": "Tier of the actual source, or null when the source is not authoritative for this family." },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "name", "args"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "args": { "type": "object" }
+      }
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement", "max_age_seconds", "observed_at", "age_seconds", "ok"],
+      "properties": {
+        "requirement": { "type": "string", "enum": ["any", "fresh"] },
+        "max_age_seconds": { "type": ["integer", "null"], "minimum": 0 },
+        "observed_at": { "type": ["string", "null"], "format": "date-time" },
+        "age_seconds": { "type": ["number", "null"], "minimum": 0 },
+        "ok": { "type": "boolean" }
+      }
+    },
+    "result_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "result_nonempty": { "type": "boolean" },
+    "entity_matched": { "type": "boolean" },
+    "relevance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relevant", "method", "matched_terms"],
+      "properties": {
+        "relevant": { "type": "boolean" },
+        "method": { "const": "adapter_asserted_v0" },
+        "matched_terms": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+      }
+    },
+    "policy_decision": { "type": "string", "enum": ["satisfied", "unsatisfied", "override"] },
+    "failure": { "type": "string", "enum": ["none", "wrong_source", "empty", "irrelevant", "stale", "error"] },
+    "override_provenance": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actor", "reason", "timestamp"],
+          "properties": {
+            "actor": { "type": "string", "minLength": 1 },
+            "reason": { "type": "string", "minLength": 1 },
+            "timestamp": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    }
+  }
+}

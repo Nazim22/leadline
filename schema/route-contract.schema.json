@@ -2,54 +2,105 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://leadline.dev/schema/route-contract.schema.json",
   "title": "Leadline Evidence Route Contract",
-  "description": "The ordered, auditable plan Leadline emits per turn. Legible to humans, structured for enforcement.",
+  "description": "The ordered, auditable plan Leadline emits per turn: obligations only. Execution results live in use-receipt.schema.json. A step is satisfied only when its machine-readable satisfaction criteria are met — never by mere invocation.",
   "type": "object",
-  "required": ["schema", "turn_id", "question", "subtasks", "ordered_route", "first_action"],
+  "required": ["schema_version", "contract_id", "turn_id", "question", "steps", "ordered_route", "complete", "unmatched_clauses", "abstained"],
   "properties": {
-    "schema": { "const": 1 },
+    "schema_version": { "const": "1.0" },
+    "contract_id": { "type": "string", "description": "Stable id for this contract instance." },
     "turn_id": { "type": "string" },
     "question": { "type": "string" },
-    "subtasks": {
+    "policy_version": { "type": "string", "description": "Version/hash of the tells+routes policy that produced this." },
+    "steps": {
       "type": "array",
-      "minItems": 1,
+      "description": "Evidence obligations. May be empty when abstained=true.",
       "items": {
         "type": "object",
-        "required": ["need", "provider", "reason", "confidence", "source"],
+        "required": ["step_id", "need", "provider", "evidence_target", "satisfaction", "confidence", "classified_by"],
         "properties": {
+          "step_id": { "type": "string", "description": "Stable within-contract id, e.g. 'route-1'." },
           "need": {
             "type": "string",
             "enum": ["historical", "structural", "repository", "runtime"],
             "description": "The epistemic evidence family this obligation requires."
           },
-          "provider": {
-            "type": "string",
-            "description": "Adapter-resolved tool for this need (e.g. gbrain, graphify, grep, cli-probe)."
-          },
-          "reason": { "type": "string" },
-          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
-          "source": {
-            "type": "string",
-            "description": "What produced this classification, e.g. 'tell:did-we' or 'embedding'."
-          },
+          "provider": { "type": "string", "description": "Adapter-resolved tool for this need (e.g. gbrain, graphify, grep, cli-probe)." },
           "availability": {
             "type": "string",
             "enum": ["available", "unavailable", "degraded"],
-            "description": "Hard feasibility state from the arbiter; distinct from classification confidence."
+            "description": "Hard feasibility from the arbiter; orthogonal to classification confidence."
           },
           "fallback": {
-            "type": "string",
-            "description": "Explicit degraded path with reason when the preferred provider is unavailable. Never rewrites 'need'."
+            "type": ["object", "null"],
+            "description": "Structured degraded path. Never rewrites 'need'.",
+            "required": ["provider", "when"],
+            "properties": {
+              "provider": { "type": "string" },
+              "when": { "type": "string", "description": "Trigger, e.g. 'symbol_not_indexed', 'graph_stale', 'provider_unavailable'." }
+            }
+          },
+          "evidence_target": {
+            "type": "object",
+            "description": "What the evidence must be ABOUT — the anchor a receipt is checked against.",
+            "required": ["question"],
+            "properties": {
+              "subject": { "type": ["string", "null"], "description": "Resolved entity/symbol, e.g. 'performSync'." },
+              "question": { "type": "string", "description": "Normalized obligation, e.g. 'direct callers of performSync'." }
+            }
+          },
+          "satisfaction": {
+            "type": "object",
+            "description": "Machine-readable criteria a receipt must meet. Makes gate-gaming detectable.",
+            "required": ["requires_nonempty", "requires_relevance_to", "freshness"],
+            "properties": {
+              "requires_nonempty": { "type": "boolean" },
+              "requires_relevance_to": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "description": "Tokens/ids the result must reference to count. Empty targets are invalid and must abstain." },
+              "freshness": { "type": "string", "enum": ["any", "fresh"], "default": "any" }
+            }
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "classified_by": { "type": "string", "description": "'tell:<id>' | 'embedding' | 'decompose'." },
+          "source_scope": { "type": ["string", "null"], "description": "Optional corpus/scope the provider should target (renamed from ambiguous 'source')." },
+          "semantic_diagnostics": {
+            "type": "object",
+            "description": "Open-set semantic score and gate diagnostics. Present only for embedding-classified steps.",
+            "required": ["candidate_family", "family_score", "runner_up", "family_margin", "abstain_score", "topk_agreement", "route_gate"],
+            "properties": {
+              "candidate_family": { "type": "string", "enum": ["historical", "structural", "repository", "runtime"] },
+              "family_score": { "type": "number" },
+              "runner_up": { "type": ["string", "null"] },
+              "family_margin": { "type": ["number", "null"] },
+              "abstain_score": { "type": ["number", "null"] },
+              "topk_agreement": { "type": ["number", "null"] },
+              "route_gate": { "const": "route" }
+            }
           }
         }
       }
     },
     "ordered_route": {
       "type": "array",
-      "items": { "type": "string", "enum": ["historical", "structural", "repository", "runtime"] },
-      "description": "The needs in execution order. Usually one step; sometimes two or three."
+      "items": { "type": "string" },
+      "description": "step_id references in execution order. The single source of ordering — steps carry no order themselves."
     },
-    "first_action": { "type": "string" },
+    "complete": { "type": "boolean", "description": "True only when every positive clause produced a target-resolved evidence obligation." },
+    "unmatched_clauses": {
+      "type": "array",
+      "description": "Positive clauses that could not become an evidence obligation. Non-empty means the plan is partial and complete=false.",
+      "items": {
+        "type": "object",
+        "required": ["index", "text", "start", "end", "reason"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "text": { "type": "string", "minLength": 1 },
+          "start": { "type": "integer", "minimum": 0 },
+          "end": { "type": "integer", "minimum": 1 },
+          "reason": { "type": "string", "enum": ["no_high_precision_tell", "unresolved_evidence_target", "semantic_below_family_floor", "semantic_ambiguous_family_margin", "semantic_abstain_veto", "semantic_unavailable", "semantic_invalid_response"] }
+        }
+      }
+    },
+    "first_action": { "type": ["string", "null"], "description": "Derived convenience: provider of the first ordered step. Never authored independently." },
     "abstained": { "type": "boolean", "default": false },
-    "policy_version": { "type": "string" }
+    "abstain_reason": { "type": ["string", "null"] }
   }
 }

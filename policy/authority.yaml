@@ -1,0 +1,36 @@
+# Leadline LL-1 authority policy. Shadow/log-only: this policy cannot block.
+# Authority requires a derived capability plus successful execution and a positive,
+# claim-independent capability outcome. Unknown/negative outcomes can never support.
+# families carry tier + freshness only; capability_requirements map each claim pattern to the
+# capabilities that authoritatively satisfy it.
+policy_version: authority-v0.3
+mode: shadow
+
+families:
+  historical:
+    authority_tier: 2
+    freshness:
+      requirement: any
+      max_age_seconds: null
+  structural:
+    authority_tier: 1
+    freshness:
+      requirement: fresh
+      max_age_seconds: 86400
+  repository:
+    authority_tier: 1
+    freshness:
+      requirement: fresh
+      max_age_seconds: 300
+  runtime:
+    authority_tier: 1
+    freshness:
+      requirement: fresh
+      max_age_seconds: 300
+
+capability_requirements:
+  runtime-live: [runtime.health_probe]
+  test-pass: [runtime.test_run]
+  repo-state: [repository.current_bytes]
+  hist-decided: [historical.decision_recall]
+  structural-complete: [structural.complete_callers]

@@ -16,9 +16,10 @@ Providers (in `policy/routes.yaml`) map families → your tools. That mapping is
 ## Pipeline
 `decompose → high-precision tells → embedding candidate ranking → policy/availability arbiter → ordered contract → hook enforcement + use receipts → reviewed outcome adaptation`
 
-- **Decompose** — split conjunctive asks deterministically; prefer under-splitting.
-- **Tells** (`policy/tells.yaml`) — high-precision keyword rules, each with a stable id + tests; conflicts produce a multi-step plan, never a silent fall-through.
-- **Embedding fallback** — local embeddings (bge-m3 via Ollama `/api/embed`), cached exemplars, nearest-exemplar + margin threshold, **abstain** when low.
+- **Decompose** — split explicit clause/sequencing boundaries deterministically; prefer under-splitting.
+- **Tells** (`policy/tells.yaml`) — high-precision keyword rules with bounded one-to-five-token wildcards, exact spans, stable ids, and object-specific clause exclusions; conflicts produce a multi-step plan, never a silent fall-through.
+- **Contract completeness** — obligations are keyed by clause + family, so repeated-family work is preserved. Any positive clause that cannot route, or any matched clause without a relevance anchor, appears in `unmatched_clauses` and forces `complete=false`. Empty relevance targets are invalid.
+- **Embedding fallback** — planned, not present in V0. Later: local embeddings (bge-m3 via Ollama `/api/embed`), cached exemplars, nearest-exemplar + margin threshold, **abstain** when low.
 - **Arbiter** — map need→provider using hard state (project, available tools, graph freshness, turn history). Provider-unavailable ≠ classifier-wrong: record a degraded fallback with a reason; never rewrite the need.
 
 ## Hooks

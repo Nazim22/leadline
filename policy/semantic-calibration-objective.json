@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "objective_version": "stage2.1-calibration-v1",
+  "frozen_at": "2026-07-23T03:47:32Z",
+  "frozen_before_calibration_labels_opened": true,
+  "evaluation_unit": "prompt",
+  "pipeline_scope": "stage1-tells-plus-stage2-semantic",
+  "primary_objective": {
+    "metric": "routed_evidence_request_recall",
+    "direction": "maximize",
+    "definition": "Gold non-abstain prompts whose predicted first family equals the gold first family, divided by all gold non-abstain prompts."
+  },
+  "constraints": {
+    "routed_first_family_precision": {
+      "minimum": 0.9,
+      "definition": "Prompts with a correct predicted first family divided by all prompts with any predicted route. A configuration with zero routed prompts is ineligible."
+    },
+    "false_route_rate_on_true_abstains": {
+      "maximum": 0.02,
+      "definition": "Gold-abstain prompts with any predicted route divided by all gold-abstain prompts."
+    }
+  },
+  "selection": {
+    "eligible": "Both constraints must be met on the naturally sampled calibration set; no infeasible configuration is promoted.",
+    "tie_break_order": [
+      "higher_routed_evidence_request_recall",
+      "higher_macro_first_family_recall",
+      "lower_false_route_rate_on_true_abstains",
+      "higher_routed_first_family_precision",
+      "higher_gold_abstention_recall",
+      "lexicographically_smaller_canonical_config_json"
+    ]
+  },
+  "reporting_requirements": [
+    "natural-distribution denominators",
+    "coverage-risk table",
+    "per-family first-route recall",
+    "gold-abstention recall and false-route count",
+    "terse-vs-detailed",
+    "single-vs-multi-intent",
+    "historical-vs-runtime boundary",
+    "label confidence and agreement strata",
+    "complete miss and false-route lists"
+  ],
+  "integrity": {
+    "calibration_only": true,
+    "eval1_role": "discovery-regression-only",
+    "eval2_access": "forbidden-until-config-lock-commit",
+    "grouping": ["session_hash", "cluster_id"],
+    "no_exemplar_edits_from_calibration_misses": true,
+    "no_threshold_or_gate_changes_after_eval2_open": true
+  }
+}

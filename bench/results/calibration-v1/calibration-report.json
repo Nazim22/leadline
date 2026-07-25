@@ -1,0 +1,2513 @@
+{
+  "schema_version": 1,
+  "selected": {
+    "config": {
+      "abstainVetoMargin": 0.12,
+      "agreeFrac": 0.6,
+      "floors": {
+        "historical": 0.65,
+        "repository": 0.65,
+        "runtime": 0.65,
+        "structural": 0.35
+      },
+      "margins": {
+        "historical": 0,
+        "repository": 0,
+        "runtime": 0.06,
+        "structural": 0.16
+      },
+      "topk": 5
+    },
+    "metrics": {
+      "counts": {
+        "total": 200,
+        "gold_routed": 76,
+        "gold_abstain": 124,
+        "predicted_routed": 4,
+        "correct_first_family": 4,
+        "false_routes_on_true_abstains": 0,
+        "exact_plan": 127
+      },
+      "routed_evidence_request_recall": 0.05263157894736842,
+      "routed_first_family_precision": 1,
+      "false_route_rate_on_true_abstains": 0,
+      "gold_abstention_recall": 1,
+      "exact_plan_rate": 0.635,
+      "macro_first_family_recall": 0.04047619047619048,
+      "per_family": {
+        "historical": {
+          "gold": 42,
+          "correct": 3,
+          "predicted": 3,
+          "recall": 0.07142857142857142,
+          "precision": 1
+        },
+        "structural": {
+          "gold": 0,
+          "correct": 0,
+          "predicted": 0,
+          "recall": null,
+          "precision": null
+        },
+        "repository": {
+          "gold": 14,
+          "correct": 0,
+          "predicted": 0,
+          "recall": 0,
+          "precision": null
+        },
+        "runtime": {
+          "gold": 20,
+          "correct": 1,
+          "predicted": 1,
+          "recall": 0.05,
+          "precision": 1
+        }
+      }
+    }
+  },
+  "selected_strata": {
+    "definitions": {
+      "terse": "normalized whitespace token count <= 8",
+      "detailed": "normalized whitespace token count >= 9",
+      "route_cardinality": "gold evidence-route cardinality; this is a route-intent proxy, not a general linguistic intent annotation",
+      "historical_runtime_boundary_proxy": "gold first family is historical or runtime and label confidence is not high",
+      "label_agreement": "optional audit agreement annotation; not_recorded when absent"
+    },
+    "gold_family": {
+      "abstain": {
+        "counts": {
+          "total": 124,
+          "gold_routed": 0,
+          "gold_abstain": 124,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 124
+        },
+        "routed_evidence_request_recall": null,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 1,
+        "macro_first_family_recall": null,
+        "per_family": {
+          "historical": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          }
+        }
+      },
+      "historical": {
+        "counts": {
+          "total": 42,
+          "gold_routed": 42,
+          "gold_abstain": 0,
+          "predicted_routed": 3,
+          "correct_first_family": 3,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 2
+        },
+        "routed_evidence_request_recall": 0.07142857142857142,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0.047619047619047616,
+        "macro_first_family_recall": 0.07142857142857142,
+        "per_family": {
+          "historical": {
+            "gold": 42,
+            "correct": 3,
+            "predicted": 3,
+            "recall": 0.07142857142857142,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          }
+        }
+      },
+      "structural": null,
+      "repository": {
+        "counts": {
+          "total": 14,
+          "gold_routed": 14,
+          "gold_abstain": 0,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 0
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 14,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          }
+        }
+      },
+      "runtime": {
+        "counts": {
+          "total": 20,
+          "gold_routed": 20,
+          "gold_abstain": 0,
+          "predicted_routed": 1,
+          "correct_first_family": 1,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 1
+        },
+        "routed_evidence_request_recall": 0.05,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0.05,
+        "macro_first_family_recall": 0.05,
+        "per_family": {
+          "historical": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 20,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.05,
+            "precision": 1
+          }
+        }
+      }
+    },
+    "prompt_detail": {
+      "terse": {
+        "counts": {
+          "total": 77,
+          "gold_routed": 16,
+          "gold_abstain": 61,
+          "predicted_routed": 2,
+          "correct_first_family": 2,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 63
+        },
+        "routed_evidence_request_recall": 0.125,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.8181818181818182,
+        "macro_first_family_recall": 0.12037037037037036,
+        "per_family": {
+          "historical": {
+            "gold": 9,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.1111111111111111,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 3,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 4,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.25,
+            "precision": 1
+          }
+        }
+      },
+      "detailed": {
+        "counts": {
+          "total": 123,
+          "gold_routed": 60,
+          "gold_abstain": 63,
+          "predicted_routed": 2,
+          "correct_first_family": 2,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 64
+        },
+        "routed_evidence_request_recall": 0.03333333333333333,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.5203252032520326,
+        "macro_first_family_recall": 0.020202020202020204,
+        "per_family": {
+          "historical": {
+            "gold": 33,
+            "correct": 2,
+            "predicted": 2,
+            "recall": 0.06060606060606061,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 11,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 16,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      }
+    },
+    "route_cardinality": {
+      "abstain": {
+        "counts": {
+          "total": 124,
+          "gold_routed": 0,
+          "gold_abstain": 124,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 124
+        },
+        "routed_evidence_request_recall": null,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 1,
+        "macro_first_family_recall": null,
+        "per_family": {
+          "historical": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          }
+        }
+      },
+      "single": {
+        "counts": {
+          "total": 66,
+          "gold_routed": 66,
+          "gold_abstain": 0,
+          "predicted_routed": 4,
+          "correct_first_family": 4,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 3
+        },
+        "routed_evidence_request_recall": 0.06060606060606061,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0.045454545454545456,
+        "macro_first_family_recall": 0.045923632610939104,
+        "per_family": {
+          "historical": {
+            "gold": 38,
+            "correct": 3,
+            "predicted": 3,
+            "recall": 0.07894736842105263,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 11,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 17,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.058823529411764705,
+            "precision": 1
+          }
+        }
+      },
+      "multi": {
+        "counts": {
+          "total": 10,
+          "gold_routed": 10,
+          "gold_abstain": 0,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 0
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 4,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 3,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 3,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      }
+    },
+    "historical_runtime": {
+      "historical": {
+        "counts": {
+          "total": 42,
+          "gold_routed": 42,
+          "gold_abstain": 0,
+          "predicted_routed": 3,
+          "correct_first_family": 3,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 2
+        },
+        "routed_evidence_request_recall": 0.07142857142857142,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0.047619047619047616,
+        "macro_first_family_recall": 0.07142857142857142,
+        "per_family": {
+          "historical": {
+            "gold": 42,
+            "correct": 3,
+            "predicted": 3,
+            "recall": 0.07142857142857142,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          }
+        }
+      },
+      "runtime": {
+        "counts": {
+          "total": 20,
+          "gold_routed": 20,
+          "gold_abstain": 0,
+          "predicted_routed": 1,
+          "correct_first_family": 1,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 1
+        },
+        "routed_evidence_request_recall": 0.05,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0.05,
+        "macro_first_family_recall": 0.05,
+        "per_family": {
+          "historical": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 20,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.05,
+            "precision": 1
+          }
+        }
+      },
+      "boundary_proxy": {
+        "counts": {
+          "total": 20,
+          "gold_routed": 20,
+          "gold_abstain": 0,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 0
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": null,
+        "gold_abstention_recall": null,
+        "exact_plan_rate": 0,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 15,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 5,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      }
+    },
+    "label_confidence": {
+      "high": {
+        "counts": {
+          "total": 165,
+          "gold_routed": 49,
+          "gold_abstain": 116,
+          "predicted_routed": 4,
+          "correct_first_family": 4,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 119
+        },
+        "routed_evidence_request_recall": 0.08163265306122448,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.7212121212121212,
+        "macro_first_family_recall": 0.059259259259259255,
+        "per_family": {
+          "historical": {
+            "gold": 27,
+            "correct": 3,
+            "predicted": 3,
+            "recall": 0.1111111111111111,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 7,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 15,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.06666666666666667,
+            "precision": 1
+          }
+        }
+      },
+      "low": {
+        "counts": {
+          "total": 5,
+          "gold_routed": 0,
+          "gold_abstain": 5,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 5
+        },
+        "routed_evidence_request_recall": null,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 1,
+        "macro_first_family_recall": null,
+        "per_family": {
+          "historical": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          }
+        }
+      },
+      "medium": {
+        "counts": {
+          "total": 30,
+          "gold_routed": 27,
+          "gold_abstain": 3,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 3
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.1,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 15,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 7,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 5,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      }
+    },
+    "context_dependency": {
+      "both": {
+        "counts": {
+          "total": 21,
+          "gold_routed": 14,
+          "gold_abstain": 7,
+          "predicted_routed": 3,
+          "correct_first_family": 3,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 10
+        },
+        "routed_evidence_request_recall": 0.21428571428571427,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.47619047619047616,
+        "macro_first_family_recall": 0.16666666666666666,
+        "per_family": {
+          "historical": {
+            "gold": 8,
+            "correct": 2,
+            "predicted": 2,
+            "recall": 0.25,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 2,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 4,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.25,
+            "precision": 1
+          }
+        }
+      },
+      "none": {
+        "counts": {
+          "total": 43,
+          "gold_routed": 17,
+          "gold_abstain": 26,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 26
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.6046511627906976,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 12,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 3,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 2,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      },
+      "project": {
+        "counts": {
+          "total": 56,
+          "gold_routed": 26,
+          "gold_abstain": 30,
+          "predicted_routed": 1,
+          "correct_first_family": 1,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 30
+        },
+        "routed_evidence_request_recall": 0.038461538461538464,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.5357142857142857,
+        "macro_first_family_recall": 0.047619047619047616,
+        "per_family": {
+          "historical": {
+            "gold": 7,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.14285714285714285,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 7,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 12,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      },
+      "referent": {
+        "counts": {
+          "total": 80,
+          "gold_routed": 19,
+          "gold_abstain": 61,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 61
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.7625,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 15,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 2,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 2,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      }
+    },
+    "label_agreement": {
+      "unanimous": {
+        "counts": {
+          "total": 163,
+          "gold_routed": 67,
+          "gold_abstain": 96,
+          "predicted_routed": 4,
+          "correct_first_family": 4,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 99
+        },
+        "routed_evidence_request_recall": 0.05970149253731343,
+        "routed_first_family_precision": 1,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.6073619631901841,
+        "macro_first_family_recall": 0.046474358974358976,
+        "per_family": {
+          "historical": {
+            "gold": 39,
+            "correct": 3,
+            "predicted": 3,
+            "recall": 0.07692307692307693,
+            "precision": 1
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 12,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 16,
+            "correct": 1,
+            "predicted": 1,
+            "recall": 0.0625,
+            "precision": 1
+          }
+        }
+      },
+      "disputed": {
+        "counts": {
+          "total": 37,
+          "gold_routed": 9,
+          "gold_abstain": 28,
+          "predicted_routed": 0,
+          "correct_first_family": 0,
+          "false_routes_on_true_abstains": 0,
+          "exact_plan": 28
+        },
+        "routed_evidence_request_recall": 0,
+        "routed_first_family_precision": null,
+        "false_route_rate_on_true_abstains": 0,
+        "gold_abstention_recall": 1,
+        "exact_plan_rate": 0.7567567567567568,
+        "macro_first_family_recall": 0,
+        "per_family": {
+          "historical": {
+            "gold": 3,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "structural": {
+            "gold": 0,
+            "correct": 0,
+            "predicted": 0,
+            "recall": null,
+            "precision": null
+          },
+          "repository": {
+            "gold": 2,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          },
+          "runtime": {
+            "gold": 4,
+            "correct": 0,
+            "predicted": 0,
+            "recall": 0,
+            "precision": null
+          }
+        }
+      },
+      "not_recorded": null
+    }
+  },
+  "coverage_risk": [
+    {
+      "predicted_routed": 0,
+      "total": 200,
+      "coverage_rate": 0,
+      "routed_first_family_precision": null,
+      "routed_evidence_request_recall": 0,
+      "false_route_rate_on_true_abstains": 0
+    },
+    {
+      "predicted_routed": 1,
+      "total": 200,
+      "coverage_rate": 0.005,
+      "routed_first_family_precision": 1,
+      "routed_evidence_request_recall": 0.013157894736842105,
+      "false_route_rate_on_true_abstains": 0
+    },
+    {
+      "predicted_routed": 2,
+      "total": 200,
+      "coverage_rate": 0.01,
+      "routed_first_family_precision": 1,
+      "routed_evidence_request_recall": 0.02631578947368421,
+      "false_route_rate_on_true_abstains": 0
+    },
+    {
+      "predicted_routed": 3,
+      "total": 200,
+      "coverage_rate": 0.015,
+      "routed_first_family_precision": 1,
+      "routed_evidence_request_recall": 0.039473684210526314,
+      "false_route_rate_on_true_abstains": 0
+    },
+    {
+      "predicted_routed": 4,
+      "total": 200,
+      "coverage_rate": 0.02,
+      "routed_first_family_precision": 1,
+      "routed_evidence_request_recall": 0.05263157894736842,
+      "false_route_rate_on_true_abstains": 0
+    },
+    {
+      "predicted_routed": 5,
+      "total": 200,
+      "coverage_rate": 0.025,
+      "routed_first_family_precision": 0.8,
+      "routed_evidence_request_recall": 0.05263157894736842,
+      "false_route_rate_on_true_abstains": 0.008064516129032258
+    },
+    {
+      "predicted_routed": 6,
+      "total": 200,
+      "coverage_rate": 0.03,
+      "routed_first_family_precision": 0.6666666666666666,
+      "routed_evidence_request_recall": 0.05263157894736842,
+      "false_route_rate_on_true_abstains": 0.016129032258064516
+    },
+    {
+      "predicted_routed": 7,
+      "total": 200,
+      "coverage_rate": 0.035,
+      "routed_first_family_precision": 0.5714285714285714,
+      "routed_evidence_request_recall": 0.05263157894736842,
+      "false_route_rate_on_true_abstains": 0.024193548387096774
+    },
+    {
+      "predicted_routed": 8,
+      "total": 200,
+      "coverage_rate": 0.04,
+      "routed_first_family_precision": 0.625,
+      "routed_evidence_request_recall": 0.06578947368421052,
+      "false_route_rate_on_true_abstains": 0.016129032258064516
+    },
+    {
+      "predicted_routed": 9,
+      "total": 200,
+      "coverage_rate": 0.045,
+      "routed_first_family_precision": 0.6666666666666666,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.016129032258064516
+    },
+    {
+      "predicted_routed": 10,
+      "total": 200,
+      "coverage_rate": 0.05,
+      "routed_first_family_precision": 0.6,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.024193548387096774
+    },
+    {
+      "predicted_routed": 11,
+      "total": 200,
+      "coverage_rate": 0.055,
+      "routed_first_family_precision": 0.45454545454545453,
+      "routed_evidence_request_recall": 0.06578947368421052,
+      "false_route_rate_on_true_abstains": 0.03225806451612903
+    },
+    {
+      "predicted_routed": 12,
+      "total": 200,
+      "coverage_rate": 0.06,
+      "routed_first_family_precision": 0.5,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.04032258064516129
+    },
+    {
+      "predicted_routed": 13,
+      "total": 200,
+      "coverage_rate": 0.065,
+      "routed_first_family_precision": 0.46153846153846156,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.04032258064516129
+    },
+    {
+      "predicted_routed": 14,
+      "total": 200,
+      "coverage_rate": 0.07,
+      "routed_first_family_precision": 0.42857142857142855,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.04838709677419355
+    },
+    {
+      "predicted_routed": 15,
+      "total": 200,
+      "coverage_rate": 0.075,
+      "routed_first_family_precision": 0.4,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.056451612903225805
+    },
+    {
+      "predicted_routed": 16,
+      "total": 200,
+      "coverage_rate": 0.08,
+      "routed_first_family_precision": 0.375,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.056451612903225805
+    },
+    {
+      "predicted_routed": 17,
+      "total": 200,
+      "coverage_rate": 0.085,
+      "routed_first_family_precision": 0.4117647058823529,
+      "routed_evidence_request_recall": 0.09210526315789473,
+      "false_route_rate_on_true_abstains": 0.06451612903225806
+    },
+    {
+      "predicted_routed": 18,
+      "total": 200,
+      "coverage_rate": 0.09,
+      "routed_first_family_precision": 0.3333333333333333,
+      "routed_evidence_request_recall": 0.07894736842105263,
+      "false_route_rate_on_true_abstains": 0.07258064516129033
+    },
+    {
+      "predicted_routed": 19,
+      "total": 200,
+      "coverage_rate": 0.095,
+      "routed_first_family_precision": 0.42105263157894735,
+      "routed_evidence_request_recall": 0.10526315789473684,
+      "false_route_rate_on_true_abstains": 0.07258064516129033
+    },
+    {
+      "predicted_routed": 20,
+      "total": 200,
+      "coverage_rate": 0.1,
+      "routed_first_family_precision": 0.5,
+      "routed_evidence_request_recall": 0.13157894736842105,
+      "false_route_rate_on_true_abstains": 0.07258064516129033
+    },
+    {
+      "predicted_routed": 21,
+      "total": 200,
+      "coverage_rate": 0.105,
+      "routed_first_family_precision": 0.5238095238095238,
+      "routed_evidence_request_recall": 0.14473684210526316,
+      "false_route_rate_on_true_abstains": 0.07258064516129033
+    },
+    {
+      "predicted_routed": 22,
+      "total": 200,
+      "coverage_rate": 0.11,
+      "routed_first_family_precision": 0.36363636363636365,
+      "routed_evidence_request_recall": 0.10526315789473684,
+      "false_route_rate_on_true_abstains": 0.08870967741935484
+    },
+    {
+      "predicted_routed": 23,
+      "total": 200,
+      "coverage_rate": 0.115,
+      "routed_first_family_precision": 0.391304347826087,
+      "routed_evidence_request_recall": 0.11842105263157894,
+      "false_route_rate_on_true_abstains": 0.08870967741935484
+    },
+    {
+      "predicted_routed": 24,
+      "total": 200,
+      "coverage_rate": 0.12,
+      "routed_first_family_precision": 0.5416666666666666,
+      "routed_evidence_request_recall": 0.17105263157894737,
+      "false_route_rate_on_true_abstains": 0.06451612903225806
+    },
+    {
+      "predicted_routed": 25,
+      "total": 200,
+      "coverage_rate": 0.125,
+      "routed_first_family_precision": 0.52,
+      "routed_evidence_request_recall": 0.17105263157894737,
+      "false_route_rate_on_true_abstains": 0.07258064516129033
+    },
+    {
+      "predicted_routed": 26,
+      "total": 200,
+      "coverage_rate": 0.13,
+      "routed_first_family_precision": 0.34615384615384615,
+      "routed_evidence_request_recall": 0.11842105263157894,
+      "false_route_rate_on_true_abstains": 0.0967741935483871
+    },
+    {
+      "predicted_routed": 27,
+      "total": 200,
+      "coverage_rate": 0.135,
+      "routed_first_family_precision": 0.4074074074074074,
+      "routed_evidence_request_recall": 0.14473684210526316,
+      "false_route_rate_on_true_abstains": 0.11290322580645161
+    },
+    {
+      "predicted_routed": 28,
+      "total": 200,
+      "coverage_rate": 0.14,
+      "routed_first_family_precision": 0.5,
+      "routed_evidence_request_recall": 0.18421052631578946,
+      "false_route_rate_on_true_abstains": 0.08870967741935484
+    },
+    {
+      "predicted_routed": 29,
+      "total": 200,
+      "coverage_rate": 0.145,
+      "routed_first_family_precision": 0.3103448275862069,
+      "routed_evidence_request_recall": 0.11842105263157894,
+      "false_route_rate_on_true_abstains": 0.12096774193548387
+    },
+    {
+      "predicted_routed": 30,
+      "total": 200,
+      "coverage_rate": 0.15,
+      "routed_first_family_precision": 0.3333333333333333,
+      "routed_evidence_request_recall": 0.13157894736842105,
+      "false_route_rate_on_true_abstains": 0.13709677419354838
+    },
+    {
+      "predicted_routed": 31,
+      "total": 200,
+      "coverage_rate": 0.155,
+      "routed_first_family_precision": 0.3225806451612903,
+      "routed_evidence_request_recall": 0.13157894736842105,
+      "false_route_rate_on_true_abstains": 0.13709677419354838
+    },
+    {
+      "predicted_routed": 32,
+      "total": 200,
+      "coverage_rate": 0.16,
+      "routed_first_family_precision": 0.46875,
+      "routed_evidence_request_recall": 0.19736842105263158,
+      "false_route_rate_on_true_abstains": 0.08870967741935484
+    },
+    {
+      "predicted_routed": 33,
+      "total": 200,
+      "coverage_rate": 0.165,
+      "routed_first_family_precision": 0.48484848484848486,
+      "routed_evidence_request_recall": 0.21052631578947367,
+      "false_route_rate_on_true_abstains": 0.08870967741935484
+    },
+    {
+      "predicted_routed": 34,
+      "total": 200,
+      "coverage_rate": 0.17,
+      "routed_first_family_precision": 0.47058823529411764,
+      "routed_evidence_request_recall": 0.21052631578947367,
+      "false_route_rate_on_true_abstains": 0.10483870967741936
+    },
+    {
+      "predicted_routed": 35,
+      "total": 200,
+      "coverage_rate": 0.175,
+      "routed_first_family_precision": 0.4857142857142857,
+      "routed_evidence_request_recall": 0.2236842105263158,
+      "false_route_rate_on_true_abstains": 0.07258064516129033
+    },
+    {
+      "predicted_routed": 36,
+      "total": 200,
+      "coverage_rate": 0.18,
+      "routed_first_family_precision": 0.4722222222222222,
+      "routed_evidence_request_recall": 0.2236842105263158,
+      "false_route_rate_on_true_abstains": 0.08064516129032258
+    },
+    {
+      "predicted_routed": 37,
+      "total": 200,
+      "coverage_rate": 0.185,
+      "routed_first_family_precision": 0.4594594594594595,
+      "routed_evidence_request_recall": 0.2236842105263158,
+      "false_route_rate_on_true_abstains": 0.11290322580645161
+    },
+    {
+      "predicted_routed": 38,
+      "total": 200,
+      "coverage_rate": 0.19,
+      "routed_first_family_precision": 0.47368421052631576,
+      "routed_evidence_request_recall": 0.23684210526315788,
+      "false_route_rate_on_true_abstains": 0.11290322580645161
+    },
+    {
+      "predicted_routed": 39,
+      "total": 200,
+      "coverage_rate": 0.195,
+      "routed_first_family_precision": 0.46153846153846156,
+      "routed_evidence_request_recall": 0.23684210526315788,
+      "false_route_rate_on_true_abstains": 0.0967741935483871
+    },
+    {
+      "predicted_routed": 40,
+      "total": 200,
+      "coverage_rate": 0.2,
+      "routed_first_family_precision": 0.475,
+      "routed_evidence_request_recall": 0.25,
+      "false_route_rate_on_true_abstains": 0.11290322580645161
+    },
+    {
+      "predicted_routed": 41,
+      "total": 200,
+      "coverage_rate": 0.205,
+      "routed_first_family_precision": 0.43902439024390244,
+      "routed_evidence_request_recall": 0.23684210526315788,
+      "false_route_rate_on_true_abstains": 0.12903225806451613
+    },
+    {
+      "predicted_routed": 42,
+      "total": 200,
+      "coverage_rate": 0.21,
+      "routed_first_family_precision": 0.4523809523809524,
+      "routed_evidence_request_recall": 0.25,
+      "false_route_rate_on_true_abstains": 0.12903225806451613
+    },
+    {
+      "predicted_routed": 43,
+      "total": 200,
+      "coverage_rate": 0.215,
+      "routed_first_family_precision": 0.4186046511627907,
+      "routed_evidence_request_recall": 0.23684210526315788,
+      "false_route_rate_on_true_abstains": 0.12096774193548387
+    },
+    {
+      "predicted_routed": 44,
+      "total": 200,
+      "coverage_rate": 0.22,
+      "routed_first_family_precision": 0.4090909090909091,
+      "routed_evidence_request_recall": 0.23684210526315788,
+      "false_route_rate_on_true_abstains": 0.1532258064516129
+    },
+    {
+      "predicted_routed": 45,
+      "total": 200,
+      "coverage_rate": 0.225,
+      "routed_first_family_precision": 0.4222222222222222,
+      "routed_evidence_request_recall": 0.25,
+      "false_route_rate_on_true_abstains": 0.1532258064516129
+    },
+    {
+      "predicted_routed": 46,
+      "total": 200,
+      "coverage_rate": 0.23,
+      "routed_first_family_precision": 0.41304347826086957,
+      "routed_evidence_request_recall": 0.25,
+      "false_route_rate_on_true_abstains": 0.12903225806451613
+    },
+    {
+      "predicted_routed": 47,
+      "total": 200,
+      "coverage_rate": 0.235,
+      "routed_first_family_precision": 0.3617021276595745,
+      "routed_evidence_request_recall": 0.2236842105263158,
+      "false_route_rate_on_true_abstains": 0.1935483870967742
+    },
+    {
+      "predicted_routed": 48,
+      "total": 200,
+      "coverage_rate": 0.24,
+      "routed_first_family_precision": 0.4375,
+      "routed_evidence_request_recall": 0.27631578947368424,
+      "false_route_rate_on_true_abstains": 0.12096774193548387
+    },
+    {
+      "predicted_routed": 49,
+      "total": 200,
+      "coverage_rate": 0.245,
+      "routed_first_family_precision": 0.42857142857142855,
+      "routed_evidence_request_recall": 0.27631578947368424,
+      "false_route_rate_on_true_abstains": 0.12903225806451613
+    },
+    {
+      "predicted_routed": 50,
+      "total": 200,
+      "coverage_rate": 0.25,
+      "routed_first_family_precision": 0.38,
+      "routed_evidence_request_recall": 0.25,
+      "false_route_rate_on_true_abstains": 0.1532258064516129
+    },
+    {
+      "predicted_routed": 51,
+      "total": 200,
+      "coverage_rate": 0.255,
+      "routed_first_family_precision": 0.39215686274509803,
+      "routed_evidence_request_recall": 0.2631578947368421,
+      "false_route_rate_on_true_abstains": 0.16129032258064516
+    },
+    {
+      "predicted_routed": 52,
+      "total": 200,
+      "coverage_rate": 0.26,
+      "routed_first_family_precision": 0.4230769230769231,
+      "routed_evidence_request_recall": 0.2894736842105263,
+      "false_route_rate_on_true_abstains": 0.13709677419354838
+    },
+    {
+      "predicted_routed": 53,
+      "total": 200,
+      "coverage_rate": 0.265,
+      "routed_first_family_precision": 0.41509433962264153,
+      "routed_evidence_request_recall": 0.2894736842105263,
+      "false_route_rate_on_true_abstains": 0.14516129032258066
+    },
+    {
+      "predicted_routed": 54,
+      "total": 200,
+      "coverage_rate": 0.27,
+      "routed_first_family_precision": 0.4074074074074074,
+      "routed_evidence_request_recall": 0.2894736842105263,
+      "false_route_rate_on_true_abstains": 0.1532258064516129
+    },
+    {
+      "predicted_routed": 55,
+      "total": 200,
+      "coverage_rate": 0.275,
+      "routed_first_family_precision": 0.4,
+      "routed_evidence_request_recall": 0.2894736842105263,
+      "false_route_rate_on_true_abstains": 0.1693548387096774
+    },
+    {
+      "predicted_routed": 56,
+      "total": 200,
+      "coverage_rate": 0.28,
+      "routed_first_family_precision": 0.4107142857142857,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.16129032258064516
+    },
+    {
+      "predicted_routed": 57,
+      "total": 200,
+      "coverage_rate": 0.285,
+      "routed_first_family_precision": 0.40350877192982454,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.1693548387096774
+    },
+    {
+      "predicted_routed": 58,
+      "total": 200,
+      "coverage_rate": 0.29,
+      "routed_first_family_precision": 0.39655172413793105,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.18548387096774194
+    },
+    {
+      "predicted_routed": 59,
+      "total": 200,
+      "coverage_rate": 0.295,
+      "routed_first_family_precision": 0.3898305084745763,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.1774193548387097
+    },
+    {
+      "predicted_routed": 60,
+      "total": 200,
+      "coverage_rate": 0.3,
+      "routed_first_family_precision": 0.38333333333333336,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.1935483870967742
+    },
+    {
+      "predicted_routed": 61,
+      "total": 200,
+      "coverage_rate": 0.305,
+      "routed_first_family_precision": 0.3770491803278688,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.20161290322580644
+    },
+    {
+      "predicted_routed": 62,
+      "total": 200,
+      "coverage_rate": 0.31,
+      "routed_first_family_precision": 0.3709677419354839,
+      "routed_evidence_request_recall": 0.3026315789473684,
+      "false_route_rate_on_true_abstains": 0.20967741935483872
+    },
+    {
+      "predicted_routed": 63,
+      "total": 200,
+      "coverage_rate": 0.315,
+      "routed_first_family_precision": 0.38095238095238093,
+      "routed_evidence_request_recall": 0.3157894736842105,
+      "false_route_rate_on_true_abstains": 0.1935483870967742
+    },
+    {
+      "predicted_routed": 64,
+      "total": 200,
+      "coverage_rate": 0.32,
+      "routed_first_family_precision": 0.390625,
+      "routed_evidence_request_recall": 0.32894736842105265,
+      "false_route_rate_on_true_abstains": 0.18548387096774194
+    },
+    {
+      "predicted_routed": 65,
+      "total": 200,
+      "coverage_rate": 0.325,
+      "routed_first_family_precision": 0.36923076923076925,
+      "routed_evidence_request_recall": 0.3157894736842105,
+      "false_route_rate_on_true_abstains": 0.21774193548387097
+    },
+    {
+      "predicted_routed": 66,
+      "total": 200,
+      "coverage_rate": 0.33,
+      "routed_first_family_precision": 0.36363636363636365,
+      "routed_evidence_request_recall": 0.3157894736842105,
+      "false_route_rate_on_true_abstains": 0.23387096774193547
+    },
+    {
+      "predicted_routed": 67,
+      "total": 200,
+      "coverage_rate": 0.335,
+      "routed_first_family_precision": 0.31343283582089554,
+      "routed_evidence_request_recall": 0.27631578947368424,
+      "false_route_rate_on_true_abstains": 0.27419354838709675
+    },
+    {
+      "predicted_routed": 68,
+      "total": 200,
+      "coverage_rate": 0.34,
+      "routed_first_family_precision": 0.3235294117647059,
+      "routed_evidence_request_recall": 0.2894736842105263,
+      "false_route_rate_on_true_abstains": 0.27419354838709675
+    },
+    {
+      "predicted_routed": 69,
+      "total": 200,
+      "coverage_rate": 0.345,
+      "routed_first_family_precision": 0.37681159420289856,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.20161290322580644
+    },
+    {
+      "predicted_routed": 70,
+      "total": 200,
+      "coverage_rate": 0.35,
+      "routed_first_family_precision": 0.37142857142857144,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.20967741935483872
+    },
+    {
+      "predicted_routed": 71,
+      "total": 200,
+      "coverage_rate": 0.355,
+      "routed_first_family_precision": 0.36619718309859156,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.23387096774193547
+    },
+    {
+      "predicted_routed": 72,
+      "total": 200,
+      "coverage_rate": 0.36,
+      "routed_first_family_precision": 0.3611111111111111,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.21774193548387097
+    },
+    {
+      "predicted_routed": 73,
+      "total": 200,
+      "coverage_rate": 0.365,
+      "routed_first_family_precision": 0.3424657534246575,
+      "routed_evidence_request_recall": 0.32894736842105265,
+      "false_route_rate_on_true_abstains": 0.2661290322580645
+    },
+    {
+      "predicted_routed": 74,
+      "total": 200,
+      "coverage_rate": 0.37,
+      "routed_first_family_precision": 0.33783783783783783,
+      "routed_evidence_request_recall": 0.32894736842105265,
+      "false_route_rate_on_true_abstains": 0.2903225806451613
+    },
+    {
+      "predicted_routed": 75,
+      "total": 200,
+      "coverage_rate": 0.375,
+      "routed_first_family_precision": 0.32,
+      "routed_evidence_request_recall": 0.3157894736842105,
+      "false_route_rate_on_true_abstains": 0.3064516129032258
+    },
+    {
+      "predicted_routed": 76,
+      "total": 200,
+      "coverage_rate": 0.38,
+      "routed_first_family_precision": 0.35526315789473684,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.23387096774193547
+    },
+    {
+      "predicted_routed": 77,
+      "total": 200,
+      "coverage_rate": 0.385,
+      "routed_first_family_precision": 0.35064935064935066,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.23387096774193547
+    },
+    {
+      "predicted_routed": 78,
+      "total": 200,
+      "coverage_rate": 0.39,
+      "routed_first_family_precision": 0.34615384615384615,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.24193548387096775
+    },
+    {
+      "predicted_routed": 79,
+      "total": 200,
+      "coverage_rate": 0.395,
+      "routed_first_family_precision": 0.34177215189873417,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.27419354838709675
+    },
+    {
+      "predicted_routed": 80,
+      "total": 200,
+      "coverage_rate": 0.4,
+      "routed_first_family_precision": 0.3375,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.28225806451612906
+    },
+    {
+      "predicted_routed": 81,
+      "total": 200,
+      "coverage_rate": 0.405,
+      "routed_first_family_precision": 0.32098765432098764,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.3225806451612903
+    },
+    {
+      "predicted_routed": 82,
+      "total": 200,
+      "coverage_rate": 0.41,
+      "routed_first_family_precision": 0.32926829268292684,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.25
+    },
+    {
+      "predicted_routed": 83,
+      "total": 200,
+      "coverage_rate": 0.415,
+      "routed_first_family_precision": 0.3132530120481928,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.3548387096774194
+    },
+    {
+      "predicted_routed": 84,
+      "total": 200,
+      "coverage_rate": 0.42,
+      "routed_first_family_precision": 0.3333333333333333,
+      "routed_evidence_request_recall": 0.3684210526315789,
+      "false_route_rate_on_true_abstains": 0.29838709677419356
+    },
+    {
+      "predicted_routed": 85,
+      "total": 200,
+      "coverage_rate": 0.425,
+      "routed_first_family_precision": 0.3058823529411765,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.3548387096774194
+    },
+    {
+      "predicted_routed": 86,
+      "total": 200,
+      "coverage_rate": 0.43,
+      "routed_first_family_precision": 0.313953488372093,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.3548387096774194
+    },
+    {
+      "predicted_routed": 87,
+      "total": 200,
+      "coverage_rate": 0.435,
+      "routed_first_family_precision": 0.2988505747126437,
+      "routed_evidence_request_recall": 0.34210526315789475,
+      "false_route_rate_on_true_abstains": 0.3709677419354839
+    },
+    {
+      "predicted_routed": 88,
+      "total": 200,
+      "coverage_rate": 0.44,
+      "routed_first_family_precision": 0.3181818181818182,
+      "routed_evidence_request_recall": 0.3684210526315789,
+      "false_route_rate_on_true_abstains": 0.28225806451612906
+    },
+    {
+      "predicted_routed": 89,
+      "total": 200,
+      "coverage_rate": 0.445,
+      "routed_first_family_precision": 0.3146067415730337,
+      "routed_evidence_request_recall": 0.3684210526315789,
+      "false_route_rate_on_true_abstains": 0.2903225806451613
+    },
+    {
+      "predicted_routed": 90,
+      "total": 200,
+      "coverage_rate": 0.45,
+      "routed_first_family_precision": 0.3,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.3629032258064516
+    },
+    {
+      "predicted_routed": 91,
+      "total": 200,
+      "coverage_rate": 0.455,
+      "routed_first_family_precision": 0.2967032967032967,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.3951612903225806
+    },
+    {
+      "predicted_routed": 92,
+      "total": 200,
+      "coverage_rate": 0.46,
+      "routed_first_family_precision": 0.32608695652173914,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.33064516129032256
+    },
+    {
+      "predicted_routed": 93,
+      "total": 200,
+      "coverage_rate": 0.465,
+      "routed_first_family_precision": 0.3225806451612903,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.3387096774193548
+    },
+    {
+      "predicted_routed": 94,
+      "total": 200,
+      "coverage_rate": 0.47,
+      "routed_first_family_precision": 0.3191489361702128,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.3467741935483871
+    },
+    {
+      "predicted_routed": 95,
+      "total": 200,
+      "coverage_rate": 0.475,
+      "routed_first_family_precision": 0.28421052631578947,
+      "routed_evidence_request_recall": 0.35526315789473684,
+      "false_route_rate_on_true_abstains": 0.43548387096774194
+    },
+    {
+      "predicted_routed": 96,
+      "total": 200,
+      "coverage_rate": 0.48,
+      "routed_first_family_precision": 0.3020833333333333,
+      "routed_evidence_request_recall": 0.3815789473684211,
+      "false_route_rate_on_true_abstains": 0.3064516129032258
+    },
+    {
+      "predicted_routed": 97,
+      "total": 200,
+      "coverage_rate": 0.485,
+      "routed_first_family_precision": 0.29896907216494845,
+      "routed_evidence_request_recall": 0.3815789473684211,
+      "false_route_rate_on_true_abstains": 0.31451612903225806
+    },
+    {
+      "predicted_routed": 98,
+      "total": 200,
+      "coverage_rate": 0.49,
+      "routed_first_family_precision": 0.2857142857142857,
+      "routed_evidence_request_recall": 0.3684210526315789,
+      "false_route_rate_on_true_abstains": 0.4435483870967742
+    },
+    {
+      "predicted_routed": 99,
+      "total": 200,
+      "coverage_rate": 0.495,
+      "routed_first_family_precision": 0.2828282828282828,
+      "routed_evidence_request_recall": 0.3684210526315789,
+      "false_route_rate_on_true_abstains": 0.43548387096774194
+    },
+    {
+      "predicted_routed": 100,
+      "total": 200,
+      "coverage_rate": 0.5,
+      "routed_first_family_precision": 0.29,
+      "routed_evidence_request_recall": 0.3815789473684211,
+      "false_route_rate_on_true_abstains": 0.41935483870967744
+    },
+    {
+      "predicted_routed": 101,
+      "total": 200,
+      "coverage_rate": 0.505,
+      "routed_first_family_precision": 0.2871287128712871,
+      "routed_evidence_request_recall": 0.3815789473684211,
+      "false_route_rate_on_true_abstains": 0.4435483870967742
+    },
+    {
+      "predicted_routed": 102,
+      "total": 200,
+      "coverage_rate": 0.51,
+      "routed_first_family_precision": 0.28431372549019607,
+      "routed_evidence_request_recall": 0.3815789473684211,
+      "false_route_rate_on_true_abstains": 0.3870967741935484
+    },
+    {
+      "predicted_routed": 103,
+      "total": 200,
+      "coverage_rate": 0.515,
+      "routed_first_family_precision": 0.27184466019417475,
+      "routed_evidence_request_recall": 0.3684210526315789,
+      "false_route_rate_on_true_abstains": 0.47580645161290325
+    },
+    {
+      "predicted_routed": 104,
+      "total": 200,
+      "coverage_rate": 0.52,
+      "routed_first_family_precision": 0.28846153846153844,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.41935483870967744
+    },
+    {
+      "predicted_routed": 105,
+      "total": 200,
+      "coverage_rate": 0.525,
+      "routed_first_family_precision": 0.2857142857142857,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.4274193548387097
+    },
+    {
+      "predicted_routed": 106,
+      "total": 200,
+      "coverage_rate": 0.53,
+      "routed_first_family_precision": 0.2830188679245283,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.43548387096774194
+    },
+    {
+      "predicted_routed": 107,
+      "total": 200,
+      "coverage_rate": 0.535,
+      "routed_first_family_precision": 0.27102803738317754,
+      "routed_evidence_request_recall": 0.3815789473684211,
+      "false_route_rate_on_true_abstains": 0.49193548387096775
+    },
+    {
+      "predicted_routed": 108,
+      "total": 200,
+      "coverage_rate": 0.54,
+      "routed_first_family_precision": 0.2777777777777778,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.46774193548387094
+    },
+    {
+      "predicted_routed": 110,
+      "total": 200,
+      "coverage_rate": 0.55,
+      "routed_first_family_precision": 0.2818181818181818,
+      "routed_evidence_request_recall": 0.40789473684210525,
+      "false_route_rate_on_true_abstains": 0.4274193548387097
+    },
+    {
+      "predicted_routed": 111,
+      "total": 200,
+      "coverage_rate": 0.555,
+      "routed_first_family_precision": 0.27927927927927926,
+      "routed_evidence_request_recall": 0.40789473684210525,
+      "false_route_rate_on_true_abstains": 0.43548387096774194
+    },
+    {
+      "predicted_routed": 112,
+      "total": 200,
+      "coverage_rate": 0.56,
+      "routed_first_family_precision": 0.2767857142857143,
+      "routed_evidence_request_recall": 0.40789473684210525,
+      "false_route_rate_on_true_abstains": 0.4435483870967742
+    },
+    {
+      "predicted_routed": 113,
+      "total": 200,
+      "coverage_rate": 0.565,
+      "routed_first_family_precision": 0.26548672566371684,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.5161290322580645
+    },
+    {
+      "predicted_routed": 114,
+      "total": 200,
+      "coverage_rate": 0.57,
+      "routed_first_family_precision": 0.2631578947368421,
+      "routed_evidence_request_recall": 0.39473684210526316,
+      "false_route_rate_on_true_abstains": 0.46774193548387094
+    },
+    {
+      "predicted_routed": 115,
+      "total": 200,
+      "coverage_rate": 0.575,
+      "routed_first_family_precision": 0.2782608695652174,
+      "routed_evidence_request_recall": 0.42105263157894735,
+      "false_route_rate_on_true_abstains": 0.49193548387096775
+    },
+    {
+      "predicted_routed": 116,
+      "total": 200,
+      "coverage_rate": 0.58,
+      "routed_first_family_precision": 0.2672413793103448,
+      "routed_evidence_request_recall": 0.40789473684210525,
+      "false_route_rate_on_true_abstains": 0.5241935483870968
+    },
+    {
+      "predicted_routed": 117,
+      "total": 200,
+      "coverage_rate": 0.585,
+      "routed_first_family_precision": 0.27350427350427353,
+      "routed_evidence_request_recall": 0.42105263157894735,
+      "false_route_rate_on_true_abstains": 0.5
+    },
+    {
+      "predicted_routed": 118,
+      "total": 200,
+      "coverage_rate": 0.59,
+      "routed_first_family_precision": 0.2627118644067797,
+      "routed_evidence_request_recall": 0.40789473684210525,
+      "false_route_rate_on_true_abstains": 0.532258064516129
+    },
+    {
+      "predicted_routed": 119,
+      "total": 200,
+      "coverage_rate": 0.595,
+      "routed_first_family_precision": 0.2689075630252101,
+      "routed_evidence_request_recall": 0.42105263157894735,
+      "false_route_rate_on_true_abstains": 0.5080645161290323
+    },
+    {
+      "predicted_routed": 121,
+      "total": 200,
+      "coverage_rate": 0.605,
+      "routed_first_family_precision": 0.2727272727272727,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.5161290322580645
+    },
+    {
+      "predicted_routed": 122,
+      "total": 200,
+      "coverage_rate": 0.61,
+      "routed_first_family_precision": 0.2540983606557377,
+      "routed_evidence_request_recall": 0.40789473684210525,
+      "false_route_rate_on_true_abstains": 0.5645161290322581
+    },
+    {
+      "predicted_routed": 124,
+      "total": 200,
+      "coverage_rate": 0.62,
+      "routed_first_family_precision": 0.2661290322580645,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.4838709677419355
+    },
+    {
+      "predicted_routed": 125,
+      "total": 200,
+      "coverage_rate": 0.625,
+      "routed_first_family_precision": 0.264,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.49193548387096775
+    },
+    {
+      "predicted_routed": 126,
+      "total": 200,
+      "coverage_rate": 0.63,
+      "routed_first_family_precision": 0.2619047619047619,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.5
+    },
+    {
+      "predicted_routed": 127,
+      "total": 200,
+      "coverage_rate": 0.635,
+      "routed_first_family_precision": 0.25984251968503935,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.5645161290322581
+    },
+    {
+      "predicted_routed": 129,
+      "total": 200,
+      "coverage_rate": 0.645,
+      "routed_first_family_precision": 0.26356589147286824,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.5725806451612904
+    },
+    {
+      "predicted_routed": 131,
+      "total": 200,
+      "coverage_rate": 0.655,
+      "routed_first_family_precision": 0.25190839694656486,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.6048387096774194
+    },
+    {
+      "predicted_routed": 133,
+      "total": 200,
+      "coverage_rate": 0.665,
+      "routed_first_family_precision": 0.24812030075187969,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.6129032258064516
+    },
+    {
+      "predicted_routed": 135,
+      "total": 200,
+      "coverage_rate": 0.675,
+      "routed_first_family_precision": 0.2518518518518518,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.6209677419354839
+    },
+    {
+      "predicted_routed": 137,
+      "total": 200,
+      "coverage_rate": 0.685,
+      "routed_first_family_precision": 0.24087591240875914,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.6451612903225806
+    },
+    {
+      "predicted_routed": 138,
+      "total": 200,
+      "coverage_rate": 0.69,
+      "routed_first_family_precision": 0.2463768115942029,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.5806451612903226
+    },
+    {
+      "predicted_routed": 139,
+      "total": 200,
+      "coverage_rate": 0.695,
+      "routed_first_family_precision": 0.2446043165467626,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.6532258064516129
+    },
+    {
+      "predicted_routed": 140,
+      "total": 200,
+      "coverage_rate": 0.7,
+      "routed_first_family_precision": 0.24285714285714285,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.5967741935483871
+    },
+    {
+      "predicted_routed": 141,
+      "total": 200,
+      "coverage_rate": 0.705,
+      "routed_first_family_precision": 0.24113475177304963,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.6048387096774194
+    },
+    {
+      "predicted_routed": 143,
+      "total": 200,
+      "coverage_rate": 0.715,
+      "routed_first_family_precision": 0.23776223776223776,
+      "routed_evidence_request_recall": 0.4473684210526316,
+      "false_route_rate_on_true_abstains": 0.6370967741935484
+    },
+    {
+      "predicted_routed": 144,
+      "total": 200,
+      "coverage_rate": 0.72,
+      "routed_first_family_precision": 0.22916666666666666,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.6612903225806451
+    },
+    {
+      "predicted_routed": 145,
+      "total": 200,
+      "coverage_rate": 0.725,
+      "routed_first_family_precision": 0.2413793103448276,
+      "routed_evidence_request_recall": 0.4605263157894737,
+      "false_route_rate_on_true_abstains": 0.6451612903225806
+    },
+    {
+      "predicted_routed": 149,
+      "total": 200,
+      "coverage_rate": 0.745,
+      "routed_first_family_precision": 0.2348993288590604,
+      "routed_evidence_request_recall": 0.4605263157894737,
+      "false_route_rate_on_true_abstains": 0.6854838709677419
+    },
+    {
+      "predicted_routed": 152,
+      "total": 200,
+      "coverage_rate": 0.76,
+      "routed_first_family_precision": 0.23026315789473684,
+      "routed_evidence_request_recall": 0.4605263157894737,
+      "false_route_rate_on_true_abstains": 0.7016129032258065
+    },
+    {
+      "predicted_routed": 154,
+      "total": 200,
+      "coverage_rate": 0.77,
+      "routed_first_family_precision": 0.23376623376623376,
+      "routed_evidence_request_recall": 0.47368421052631576,
+      "false_route_rate_on_true_abstains": 0.7096774193548387
+    },
+    {
+      "predicted_routed": 156,
+      "total": 200,
+      "coverage_rate": 0.78,
+      "routed_first_family_precision": 0.22435897435897437,
+      "routed_evidence_request_recall": 0.4605263157894737,
+      "false_route_rate_on_true_abstains": 0.7419354838709677
+    },
+    {
+      "predicted_routed": 158,
+      "total": 200,
+      "coverage_rate": 0.79,
+      "routed_first_family_precision": 0.22784810126582278,
+      "routed_evidence_request_recall": 0.47368421052631576,
+      "false_route_rate_on_true_abstains": 0.7016129032258065
+    },
+    {
+      "predicted_routed": 159,
+      "total": 200,
+      "coverage_rate": 0.795,
+      "routed_first_family_precision": 0.20754716981132076,
+      "routed_evidence_request_recall": 0.4342105263157895,
+      "false_route_rate_on_true_abstains": 0.7741935483870968
+    },
+    {
+      "predicted_routed": 160,
+      "total": 200,
+      "coverage_rate": 0.8,
+      "routed_first_family_precision": 0.225,
+      "routed_evidence_request_recall": 0.47368421052631576,
+      "false_route_rate_on_true_abstains": 0.7096774193548387
+    },
+    {
+      "predicted_routed": 162,
+      "total": 200,
+      "coverage_rate": 0.81,
+      "routed_first_family_precision": 0.22839506172839505,
+      "routed_evidence_request_recall": 0.4868421052631579,
+      "false_route_rate_on_true_abstains": 0.717741935483871
+    },
+    {
+      "predicted_routed": 164,
+      "total": 200,
+      "coverage_rate": 0.82,
+      "routed_first_family_precision": 0.21341463414634146,
+      "routed_evidence_request_recall": 0.4605263157894737,
+      "false_route_rate_on_true_abstains": 0.7983870967741935
+    },
+    {
+      "predicted_routed": 166,
+      "total": 200,
+      "coverage_rate": 0.83,
+      "routed_first_family_precision": 0.21686746987951808,
+      "routed_evidence_request_recall": 0.47368421052631576,
+      "false_route_rate_on_true_abstains": 0.8064516129032258
+    },
+    {
+      "predicted_routed": 174,
+      "total": 200,
+      "coverage_rate": 0.87,
+      "routed_first_family_precision": 0.21264367816091953,
+      "routed_evidence_request_recall": 0.4868421052631579,
+      "false_route_rate_on_true_abstains": 0.8145161290322581
+    },
+    {
+      "predicted_routed": 178,
+      "total": 200,
+      "coverage_rate": 0.89,
+      "routed_first_family_precision": 0.20786516853932585,
+      "routed_evidence_request_recall": 0.4868421052631579,
+      "false_route_rate_on_true_abstains": 0.8387096774193549
+    },
+    {
+      "predicted_routed": 180,
+      "total": 200,
+      "coverage_rate": 0.9,
+      "routed_first_family_precision": 0.2111111111111111,
+      "routed_evidence_request_recall": 0.5,
+      "false_route_rate_on_true_abstains": 0.8467741935483871
+    },
+    {
+      "predicted_routed": 184,
+      "total": 200,
+      "coverage_rate": 0.92,
+      "routed_first_family_precision": 0.20108695652173914,
+      "routed_evidence_request_recall": 0.4868421052631579,
+      "false_route_rate_on_true_abstains": 0.8951612903225806
+    },
+    {
+      "predicted_routed": 189,
+      "total": 200,
+      "coverage_rate": 0.945,
+      "routed_first_family_precision": 0.19576719576719576,
+      "routed_evidence_request_recall": 0.4868421052631579,
+      "false_route_rate_on_true_abstains": 0.9274193548387096
+    },
+    {
+      "predicted_routed": 191,
+      "total": 200,
+      "coverage_rate": 0.955,
+      "routed_first_family_precision": 0.19895287958115182,
+      "routed_evidence_request_recall": 0.5,
+      "false_route_rate_on_true_abstains": 0.9354838709677419
+    },
+    {
+      "predicted_routed": 195,
+      "total": 200,
+      "coverage_rate": 0.975,
+      "routed_first_family_precision": 0.18974358974358974,
+      "routed_evidence_request_recall": 0.4868421052631579,
+      "false_route_rate_on_true_abstains": 0.967741935483871
+    },
+    {
+      "predicted_routed": 197,
+      "total": 200,
+      "coverage_rate": 0.985,
+      "routed_first_family_precision": 0.19289340101522842,
+      "routed_evidence_request_recall": 0.5,
+      "false_route_rate_on_true_abstains": 0.9758064516129032
+    }
+  ],
+  "global_best": {
+    "config": {
+      "abstainVetoMargin": 0.12,
+      "agreeFrac": 0.6,
+      "floors": {
+        "historical": 0.65,
+        "repository": 0.65,
+        "runtime": 0.65,
+        "structural": 0.65
+      },
+      "margins": {
+        "historical": 0.06,
+        "repository": 0.06,
+        "runtime": 0.06,
+        "structural": 0.06
+      },
+      "topk": 5
+    },
+    "metrics": {
+      "counts": {
+        "total": 200,
+        "gold_routed": 76,
+        "gold_abstain": 124,
+        "predicted_routed": 4,
+        "correct_first_family": 4,
+        "false_routes_on_true_abstains": 0,
+        "exact_plan": 127
+      },
+      "routed_evidence_request_recall": 0.05263157894736842,
+      "routed_first_family_precision": 1,
+      "false_route_rate_on_true_abstains": 0,
+      "gold_abstention_recall": 1,
+      "exact_plan_rate": 0.635,
+      "macro_first_family_recall": 0.04047619047619048,
+      "per_family": {
+        "historical": {
+          "gold": 42,
+          "correct": 3,
+          "predicted": 3,
+          "recall": 0.07142857142857142,
+          "precision": 1
+        },
+        "structural": {
+          "gold": 0,
+          "correct": 0,
+          "predicted": 0,
+          "recall": null,
+          "precision": null
+        },
+        "repository": {
+          "gold": 14,
+          "correct": 0,
+          "predicted": 0,
+          "recall": 0,
+          "precision": null
+        },
+        "runtime": {
+          "gold": 20,
+          "correct": 1,
+          "predicted": 1,
+          "recall": 0.05,
+          "precision": 1
+        }
+      }
+    }
+  },
+  "raw_semantic_clauses": 215,
+  "evaluated_configurations": 1233,
+  "objective": {
+    "schema_version": 1,
+    "objective_version": "stage2.1-calibration-v1",
+    "frozen_at": "2026-07-23T03:47:32Z",
+    "frozen_before_calibration_labels_opened": true,
+    "evaluation_unit": "prompt",
+    "pipeline_scope": "stage1-tells-plus-stage2-semantic",
+    "primary_objective": {
+      "metric": "routed_evidence_request_recall",
+      "direction": "maximize",
+      "definition": "Gold non-abstain prompts whose predicted first family equals the gold first family, divided by all gold non-abstain prompts."
+    },
+    "constraints": {
+      "routed_first_family_precision": {
+        "minimum": 0.9,
+        "definition": "Prompts with a correct predicted first family divided by all prompts with any predicted route. A configuration with zero routed prompts is ineligible."
+      },
+      "false_route_rate_on_true_abstains": {
+        "maximum": 0.02,
+        "definition": "Gold-abstain prompts with any predicted route divided by all gold-abstain prompts."
+      }
+    },
+    "selection": {
+      "eligible": "Both constraints must be met on the naturally sampled calibration set; no infeasible configuration is promoted.",
+      "tie_break_order": [
+        "higher_routed_evidence_request_recall",
+        "higher_macro_first_family_recall",
+        "lower_false_route_rate_on_true_abstains",
+        "higher_routed_first_family_precision",
+        "higher_gold_abstention_recall",
+        "lexicographically_smaller_canonical_config_json"
+      ]
+    },
+    "reporting_requirements": [
+      "natural-distribution denominators",
+      "coverage-risk table",
+      "per-family first-route recall",
+      "gold-abstention recall and false-route count",
+      "terse-vs-detailed",
+      "single-vs-multi-intent",
+      "historical-vs-runtime boundary",
+      "label confidence and agreement strata",
+      "complete miss and false-route lists"
+    ],
+    "integrity": {
+      "calibration_only": true,
+      "eval1_role": "discovery-regression-only",
+      "eval2_access": "forbidden-until-config-lock-commit",
+      "grouping": [
+        "session_hash",
+        "cluster_id"
+      ],
+      "no_exemplar_edits_from_calibration_misses": true,
+      "no_threshold_or_gate_changes_after_eval2_open": true
+    }
+  },
+  "search": {
+    "schema_version": 1,
+    "search_version": "stage2.1-coordinate-v1",
+    "frozen_before_calibration_labels_opened": true,
+    "fixed": {
+      "normalization": "nfkc-ws-v1",
+      "similarity": "cosine-l2-v1",
+      "topk": 5,
+      "agreement_fraction": 0.6,
+      "context_policy": "current-turn-only-v1"
+    },
+    "grid": {
+      "family_floors": [
+        0.35,
+        0.4,
+        0.45,
+        0.5,
+        0.55,
+        0.6,
+        0.65,
+        0.7,
+        0.75,
+        0.8,
+        0.85
+      ],
+      "family_margins": [
+        0,
+        0.01,
+        0.02,
+        0.04,
+        0.06,
+        0.08,
+        0.12,
+        0.16
+      ],
+      "abstain_veto_margins": [
+        null,
+        0,
+        0.02,
+        0.04,
+        0.06,
+        0.08,
+        0.12,
+        0.16
+      ]
+    },
+    "algorithm": {
+      "initialization": "Evaluate every global floor x global margin x veto tuple, using that floor and margin for all four families.",
+      "refinement": "Starting from the best eligible global tuple, optimize one family at a time in canonical family order over the full floor x margin grid, then optimize veto; repeat until unchanged or four passes.",
+      "family_order": [
+        "historical",
+        "structural",
+        "repository",
+        "runtime"
+      ],
+      "maximum_coordinate_passes": 4,
+      "candidate_ranking": "Use policy/semantic-calibration-objective.json selection and tie-break order.",
+      "infeasible_behavior": "Exit non-zero and do not write a locked production configuration."
+    },
+    "anti_leakage": {
+      "input": "calibration corpus only",
+      "eval1": "forbidden",
+      "eval2": "forbidden until locked-config commit",
+      "exemplar_edits": "forbidden after inspecting calibration labels or misses"
+    }
+  }
+}

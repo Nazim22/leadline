@@ -1,0 +1,37 @@
+# Leadline CI — makes the local test gate automatic on every PR.
+#
+# CONTRIBUTING.md states: "There is no hidden CI magic yet: the suite you run
+# locally is the gate." This workflow runs that exact same gate on GitHub's
+# Linux runner (ubuntu-latest) so every push/PR proves the suite is green
+# before review — no behavior change, no new dependencies, no core code touched.
+#
+# Note: the exam/replay/label-corpus suites require Linux (/proc/self/fd +
+# O_NOFOLLOW) and are exercised on the same Linux host class here, so CI
+# reflects what contributors already run locally on supported platforms.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: npm test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run test suite
+        run: npm test

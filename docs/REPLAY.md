@@ -188,3 +188,7 @@ npm test
 ```
 
 The unit fixtures cover seeded extraction/redaction, stale intermediate-completion rejection, a deterministic three-completion replay, opaque-label retention and validation, coverage-only output, operational failures, zero candidates, private no-follow outputs, localhost redirect enforcement, schema validation, and corpus-hash rejection.
+
+## Platform support
+
+The exam/replay harness is **authoritative on Linux**, where it uses race-safe `/proc/self/fd` + `O_NOFOLLOW` I/O (no symlink races). On **macOS/Windows** the same scripts fall back to a best-effort path that still rejects symlink components but is **not** race-safe; use it for local development only. The release-gating exam run stays Linux-only (CI runs on `ubuntu-latest`). If you hit a platform error, that is expected on non-Linux for the race-safe path — run the harness on Linux (or in a container) for an authoritative result.

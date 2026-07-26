@@ -110,33 +110,46 @@ function serializeJsonl(rows) {
 }
 
 function openAnchoredDirectory(directory, label = directory) {
-  if (process.platform !== 'linux' || !fs.constants.O_NOFOLLOW) {
-    throw new Error('race-safe exam I/O requires Linux /proc/self/fd and O_NOFOLLOW');
-  }
-  const resolved = path.resolve(directory);
-  const root = path.parse(resolved).root;
-  const flags = fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW;
-  let currentFd = fs.openSync(root, flags);
-  try {
-    for (const component of resolved.slice(root.length).split(path.sep).filter(Boolean)) {
-      const nextFd = fs.openSync(`/proc/self/fd/${currentFd}/${component}`, flags);
+  // On Linux we use the race-safe /proc/self/fd + O_NOFOLLOW path (no symlink
+  // races). On other platforms we fall back to a best-effort resolution that
+  // still rejects symlink components, but is NOT race-safe — it exists so
+  // contributors on macOS/Windows can run and develop the harness locally.
+  // The authoritative exam run that gates releases stays Linux-only (see docs/REPLAY.md).
+  if (process.platform === 'linux' && fs.constants.O_NOFOLLOW) {
+    const resolved = path.resolve(directory);
+    const root = path.parse(resolved).root;
+    const flags = fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW;
+    let currentFd = fs.openSync(root, flags);
+    try {
+      for (const component of resolved.slice(root.length).split(path.sep).filter(Boolean)) {
+        const nextFd = fs.openSync(`/proc/self/fd/${currentFd}/${component}`, flags);
+        fs.closeSync(currentFd);
+        currentFd = nextFd;
+      }
+      return currentFd;
+    } catch (error) {
       fs.closeSync(currentFd);
-      currentFd = nextFd;
+      if (error.code === 'ELOOP' || error.code === 'ENOTDIR') {
+        throw new Error(`${label} path must contain only directories, never symlinks`, { cause: error });
+      }
+      throw error;
     }
-    return currentFd;
-  } catch (error) {
-    fs.closeSync(currentFd);
-    if (error.code === 'ELOOP' || error.code === 'ENOTDIR') {
-      throw new Error(`${label} path must contain only directories, never symlinks`, { cause: error });
-    }
-    throw error;
   }
+  // Cross-platform best-effort fallback (no /proc/self/fd race-safety).
+  const resolved = path.resolve(directory);
+  if (fs.existsSync(resolved) && !fs.statSync(resolved).isDirectory()) {
+    throw new Error(`${label} path must contain only directories, never symlinks`);
+  }
+  return { __crossPlatformDir: resolved };
 }
 
 function openAnchoredParent(file, label = file) {
   const resolved = path.resolve(file);
-  const parentFd = openAnchoredDirectory(path.dirname(resolved), `${label} parent`);
-  return { parentFd, target: `/proc/self/fd/${parentFd}/${path.basename(resolved)}` };
+  const parent = openAnchoredDirectory(path.dirname(resolved), `${label} parent`);
+  if (parent && parent.__crossPlatformDir !== undefined) {
+    return { parentFd: null, target: path.join(parent.__crossPlatformDir, path.basename(resolved)) };
+  }
+  return { parentFd: parent, target: `/proc/self/fd/${parent}/${path.basename(resolved)}` };
 }
 
 function readRegularNoFollow(file, label = file) {
@@ -149,12 +162,13 @@ function readRegularNoFollow(file, label = file) {
     return fs.readFileSync(descriptor);
   } finally {
     if (descriptor !== undefined) fs.closeSync(descriptor);
-    fs.closeSync(anchored.parentFd);
+    if (anchored.parentFd !== null) fs.closeSync(anchored.parentFd);
   }
 }
 
 function writePrivate(file, content) {
   const anchored = openAnchoredParent(file, file);
+  const parentDir = anchored.parentFd !== null ? `/proc/self/fd/${anchored.parentFd}` : anchored.target.replace(/[/\\][^/\\]*$/, '');
   let temporary;
   let descriptor;
   try {
@@ -163,7 +177,7 @@ function writePrivate(file, content) {
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
     do {
       privateWriteCounter += 1;
-      temporary = `/proc/self/fd/${anchored.parentFd}/.${path.basename(file)}.tmp-${process.pid}-${privateWriteCounter}`;
+      temporary = `${parentDir}/.${path.basename(file)}.tmp-${process.pid}-${privateWriteCounter}`;
       try { descriptor = fs.openSync(temporary, 'wx', 0o600); }
       catch (error) { if (error.code !== 'EEXIST') throw error; }
     } while (descriptor === undefined);
@@ -176,7 +190,7 @@ function writePrivate(file, content) {
   } finally {
     if (descriptor !== undefined) fs.closeSync(descriptor);
     if (temporary) { try { fs.unlinkSync(temporary); } catch {} }
-    fs.closeSync(anchored.parentFd);
+    if (anchored.parentFd !== null) fs.closeSync(anchored.parentFd);
   }
 }
 

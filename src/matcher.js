@@ -9,11 +9,48 @@ function loadPolicy(filePath) {
   if (!parsed || !Array.isArray(parsed.tells) || !Array.isArray(parsed.negatives)) {
     throw new Error(`invalid tells policy: ${filePath}`);
   }
+  // Project-registerable component nouns (issue #10 direction #3): an optional
+  // companion file listing domain nouns that should behave like the built-in
+  // 'API' noun for runtime probing.
+  const nounsFile = `${filePath.replace(/tells\.yaml$/u, '')}component-nouns.yaml`;
+  let componentNouns = [];
+  try {
+    const raw = YAML.parse(fs.readFileSync(nounsFile, 'utf8'));
+    if (raw && Array.isArray(raw.nouns)) componentNouns = raw.nouns.map(String).filter(Boolean);
+  } catch { /* optional file */ }
+  parsed.componentNouns = componentNouns;
   return parsed;
 }
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Live/recorded-state qualifiers that, paired with a component noun, indicate a runtime probe.
+const STATE_QUALIFIERS = ['alive', 'up', 'down', 'responding', 'responding now', 'running', 'live', 'health', 'status', 'right now', 'today', 'still', 'currently', 'any more'];
+
+function matchComponentNoun(prompt, policy, clause, clauseIndex) {
+  const matches = [];
+  const nouns = policy.componentNouns || [];
+  if (nouns.length === 0) return matches;
+  const lower = clause.text.toLocaleLowerCase();
+  const escaped = nouns.map((n) => escapeRegex(n.toLocaleLowerCase()));
+  for (const noun of escaped) {
+    const idx = lower.indexOf(noun);
+    if (idx === -1) continue;
+    const hasQualifier = STATE_QUALIFIERS.some((q) => lower.includes(q));
+    if (!hasQualifier) continue;
+    matches.push({
+      id: 'runtime-component-noun',
+      family: 'runtime',
+      terminal: true,
+      phrase: noun,
+      text: clause.text.slice(idx, idx + noun.length),
+      span: { start: clause.start + idx, end: clause.start + idx + noun.length },
+      clause: { index: clauseIndex, text: clause.text, start: clause.start, end: clause.end },
+    });
+  }
+  return matches;
 }
 
 function compilePhrase(phrase) {
@@ -104,6 +141,11 @@ function matchPrompt(prompt, policy) {
         }
       });
     });
+    // Issue #10 direction #3: project-registerable component nouns behave like
+    // the built-in 'API' noun when paired with a live/recorded-state qualifier.
+    if ((policy.componentNouns || []).length > 0) {
+      matchComponentNoun(prompt, policy, clause, clauseIndex).forEach((m) => matches.push(m));
+    }
   });
 
   matches.sort((a, b) => a.span.start - b.span.start || a._order[0] - b._order[0] || a._order[1] - b._order[1]);

@@ -8,7 +8,7 @@ const { createClaimObligationDetector } = require('./claim-detector');
 const { loadAuthorityPolicy, requiredCapabilities } = require('./authority');
 const { deriveCapability, CAPABILITIES, CAPABILITY_MAP_VERSION, capabilityMapSha } = require('./capability');
 const { matchEntity, ENTITY_MATCHER_VERSION, entityMatcherSha } = require('./entity-match');
-const { appendReceipt, createClaimSupportReceipt } = require('./receipts');
+const { appendReceipt } = require('./receipts');
 const {
   appendEvidenceReceipt, createEvidenceContactReceipt, extractReferences, validateEvidenceReceipt,
 } = require('./evidence');
@@ -25,7 +25,6 @@ module.exports = {
   capabilityMapSha,
   compilePhrase,
   createClaimObligationDetector,
-  createClaimSupportReceipt,
   createEvidenceContactReceipt,
   createPlanner,
   decompose,

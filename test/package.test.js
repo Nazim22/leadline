@@ -25,7 +25,7 @@ test('package root exposes the Phase A claim-enforcement API', () => {
   const leadline = require('..');
   for (const name of [
     'appendFinalizationReport', 'appendReceipt', 'createClaimObligationDetector',
-    'createClaimSupportReceipt', 'evaluateFinalization', 'loadAuthorityPolicy', 'requiredCapabilities',
+    'evaluateFinalization', 'loadAuthorityPolicy', 'requiredCapabilities',
     'createEvidenceContactReceipt', 'validateEvidenceReceipt', 'deriveCapability', 'matchEntity',
   ]) {
     assert.equal(typeof leadline[name], 'function', `${name} must be exported`);

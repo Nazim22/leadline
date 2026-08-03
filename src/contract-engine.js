@@ -305,7 +305,7 @@ function createContractEngine({
         obligation_started_at: Object.fromEntries(
           contract.steps.map((step) => [`step:${step.step_id}`, startedAt]),
         ),
-        retired_step_ids: [], retired_rule_operations: [],
+        retired_step_ids: [], retired_rule_ids: [],
       },
     };
   }
@@ -316,9 +316,9 @@ function createContractEngine({
       if (!state.retired_step_ids.includes(id)) state.retired_step_ids.push(id);
       return;
     }
-    state.retired_rule_operations ||= [];
-    if (!state.retired_rule_operations.includes(retirementKey)) {
-      state.retired_rule_operations.push(retirementKey);
+    state.retired_rule_ids ||= [];
+    if (!state.retired_rule_ids.includes(retirementKey)) {
+      state.retired_rule_ids.push(retirementKey);
     }
     if (state.pending_rule_id === id && state.pending_obligation_key === retirementKey) {
       state.pending_rule_id = null;
@@ -339,6 +339,13 @@ function createContractEngine({
         receipt: { rule_id: id, failure: 'unsatisfiable', fire_count: fireCount },
       }),
     });
+  }
+
+  function clearCorrectionBudget(state, { kind, id, retirementKey = id }) {
+    const key = `${kind}:${retirementKey}`;
+    delete state.correction_fires?.[key];
+    delete state.obligation_started_at?.[key];
+    if (kind === 'rule') delete state.rule_denials?.[retirementKey];
   }
 
   function correctionThreshold(state, details) {
@@ -365,12 +372,11 @@ function createContractEngine({
   function beforeTool(state, toolCall) {
     const attempted = toolIdentity(toolCall);
     const timestamp = now().valueOf();
-    state.retired_rule_operations ||= [];
+    state.retired_rule_ids ||= [];
     const matchedOperationRule = rules.find((rule) => ruleMatchesOperation(rule, toolCall));
-    const operationRetirementKey = matchedOperationRule
-      ? `${matchedOperationRule.id}\0${operationFingerprint(toolCall)}` : null;
+    const operationRetirementKey = matchedOperationRule?.id || null;
     const operationRule = matchedOperationRule
-      && !state.retired_rule_operations.includes(operationRetirementKey)
+      && !state.retired_rule_ids.includes(operationRetirementKey)
       ? matchedOperationRule : null;
     if (operationRule && !hasFreshRuleSatisfaction(state, operationRule, timestamp)) {
       const details = {
@@ -453,6 +459,9 @@ function createContractEngine({
     const approval = state.awaiting_approval;
     if (pending && approval?.rule_id === pending.id
         && approval.operation_fingerprint === operationFingerprint(toolCall)) {
+      clearCorrectionBudget(state, {
+        kind: 'rule', id: pending.id, retirementKey: pendingObligationKey || pending.id,
+      });
       state.pending_rule_id = null;
       state.pending_obligation_key = null;
       state.awaiting_approval_rule_id = null;
@@ -467,6 +476,9 @@ function createContractEngine({
     }
     if (pending && routeMatches(pending.preferred_route, toolCall)) {
       if (hasSubstantiveResult(result?.value, toolCall) && !result?.is_error && result?.error == null) {
+        clearCorrectionBudget(state, {
+          kind: 'rule', id: pending.id, retirementKey: pendingObligationKey || pending.id,
+        });
         state.satisfied_rules[pending.id] = now().valueOf();
         state.pending_rule_id = null;
         state.pending_obligation_key = null;

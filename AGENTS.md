@@ -27,7 +27,7 @@ A local-first evidence router and policy engine for coding agents. It classifies
 ## Commands
 
 ```bash
-npx github:Nazim22/leadline init --claude-code [--dry-run]   # install hooks into a project
+npx github:Nazim22/leadline init --claude-code [--mode advisory|enforce] [--dry-run] # preview/install hooks
 npx github:Nazim22/leadline route "<prompt>"                 # see the evidence contract for a prompt
 npx github:Nazim22/leadline trace --project . --session <id> # render the decision trace
 npm test                                      # full suite

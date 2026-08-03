@@ -6,7 +6,7 @@ const path = require('node:path');
 const YAML = require('yaml');
 const { createPlanner } = require('./planner');
 const {
-  createContractEngine, loadPolicyPacks, negotiateAdapterMode, renderDecisionTrace,
+  createContractEngine, loadPolicyPacks, negotiateAdapterMode, renderDecisionTrace, validateTraceRow,
 } = require('./contract-engine');
 
 const HOOK_EVENTS = Object.freeze(['UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop']);
@@ -57,6 +57,7 @@ function traceFile(projectDir, sessionId) {
 
 function appendTrace(file, trace) {
   if (!trace) return;
+  validateTraceRow(trace);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, `${JSON.stringify(trace)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'a' });
 }
@@ -67,6 +68,22 @@ function loadMode(projectDir) {
   const config = YAML.parse(fs.readFileSync(configFile, 'utf8'));
   if (!config || !['enforce', 'advisory'].includes(config.mode)) throw new TypeError('Leadline config mode must be enforce or advisory');
   return config.mode;
+}
+
+function correctionRouteAvailable(projectDir, route) {
+  const configured = String(route || '');
+  if (!configured.toLocaleLowerCase().startsWith('read ')) return true;
+  const target = configured.slice(5).trim();
+  if (!target) return false;
+  const absolute = path.resolve(projectDir, target);
+  const relative = path.relative(projectDir, absolute);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return false;
+  try {
+    return fs.statSync(absolute).isFile();
+  } catch (error) {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return false;
+    throw error;
+  }
 }
 
 function loadRuntime(projectDir, packageRoot) {
@@ -81,7 +98,10 @@ function loadRuntime(projectDir, packageRoot) {
     directory: packDirectory,
     schemaPath: path.join(packageRoot, 'schema', 'policy-pack.schema.json'),
   });
-  return createContractEngine({ planner, packs, mode: loadMode(projectDir) });
+  return createContractEngine({
+    planner, packs, mode: loadMode(projectDir),
+    routeAvailable: (route) => correctionRouteAvailable(projectDir, route),
+  });
 }
 
 function canonicalJson(value) {
@@ -127,20 +147,49 @@ function emptyState(engine, input) {
   }).state;
 }
 
+function stripInjectedSpans(prompt) {
+  return String(prompt || '')
+    .replace(/<task-notification(?:\s[^>]*)?>[\s\S]*?(?:<\/task-notification>|$)/giu, '\n')
+    .replace(/<system-reminder(?:\s[^>]*)?>[\s\S]*?(?:<\/system-reminder>|$)/giu, '\n')
+    .replace(/\[LEADLINE\][\s\S]*?(?:\[\/LEADLINE\]|$)/giu, '\n');
+}
+
+function boundedField(value, maximumBytes) {
+  const text = String(value || '').replace(/\s+/gu, ' ').trim();
+  if (Buffer.byteLength(text, 'utf8') <= maximumBytes) return text;
+  const words = text.split(' ');
+  let bounded = '';
+  for (const word of words) {
+    const candidate = bounded ? `${bounded} ${word}` : word;
+    if (Buffer.byteLength(`${candidate} …`, 'utf8') > maximumBytes) break;
+    bounded = candidate;
+  }
+  return bounded ? `${bounded} …` : '[overlong token omitted]';
+}
+
 function renderInjection(contract) {
   if (!contract.steps.length) return '';
+  const unmatched = contract.unmatched_clauses.length
+    ? `${contract.unmatched_clauses.length} (${[...new Set(contract.unmatched_clauses.map((clause) => clause.reason))].join(', ')})`
+    : 'none';
   const lines = [
     '[LEADLINE]',
     `contract: ${contract.contract_id}`,
     `complete: ${contract.complete}`,
-    `unmatched: ${contract.unmatched_clauses.length
-      ? contract.unmatched_clauses.map((clause) => `${clause.index}:${clause.text}`).join(' | ')
-      : 'none'}`,
+    `unmatched: ${boundedField(unmatched, 160)}`,
   ];
-  contract.steps.slice(0, 4).forEach((step, index) => {
-    lines.push(`obligation_${index + 1}: ${step.evidence_target.question} | family: ${step.need} | route: ${step.provider} | satisfies: real_result_only`);
-  });
-  if (contract.steps.length > 4) lines.push(`obligations_omitted: ${contract.steps.length - 4}`);
+  let omitted = Math.max(0, contract.steps.length - 4);
+  for (const [index, step] of contract.steps.slice(0, 4).entries()) {
+    const subject = boundedField(step.evidence_target.subject, 120);
+    const route = boundedField(step.provider, 80);
+    const line = `obligation_${index + 1}: ${subject} | family: ${step.need} | route: ${route} | satisfies: real_result_only`;
+    if (Buffer.byteLength([...lines, line, '[/LEADLINE]'].join('\n'), 'utf8') <= 1200) lines.push(line);
+    else omitted += 1;
+  }
+  if (omitted > 0) {
+    const line = `obligations_omitted: ${omitted}`;
+    if (Buffer.byteLength([...lines, line, '[/LEADLINE]'].join('\n'), 'utf8') <= 1200) lines.push(line);
+  }
   lines.push('[/LEADLINE]');
   return lines.slice(0, 10).join('\n');
 }
@@ -244,7 +293,8 @@ function handleClaudeHookLocked(input, { projectDir, packageRoot }) {
   const traces = traceFile(root, input.session_id);
 
   if (input.hook_event_name === 'UserPromptSubmit') {
-    const prompt = typeof input.prompt === 'string' ? input.prompt : '';
+    const rawPrompt = typeof input.prompt === 'string' ? input.prompt : '';
+    const prompt = stripInjectedSpans(rawPrompt).trim();
     const turnId = `turn-${crypto.createHash('sha256').update(`${input.session_id || ''}\0${prompt}`).digest('hex').slice(0, 16)}`;
     const state = engine.begin(prompt, { sessionId: String(input.session_id || 'unknown'), turnId }).state;
     writeJsonAtomic(statePath, state);
@@ -291,7 +341,10 @@ function handleClaudeHookLocked(input, { projectDir, packageRoot }) {
         obligation: 'bind tool result to its accepted call', family: 'unknown',
         attempted: String(input.tool_name || 'unknown'), verdict: 'CORRECT',
         corrected_route: 'matching PreToolUse/PostToolUse tool_use_id and arguments',
-        receipt: { satisfied: false, failure: 'unbound_tool_result', call_id: binding?.call_id || null },
+        receipt: {
+          rule_id: 'receipt-binding', satisfied: false,
+          failure: 'unbound_tool_result', call_id: binding?.call_id || null,
+        },
       });
       if (engine.mode === 'advisory') {
         return { hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: message } };
@@ -333,9 +386,25 @@ function managedHookCommand(packageRoot, event) {
   return `${shellQuote(process.execPath)} ${shellQuote(cli)} hook ${event} --project "\${CLAUDE_PROJECT_DIR}"`;
 }
 
-function installClaudeCode({ projectDir, packageRoot = path.join(__dirname, '..'), mode = 'enforce' } = {}) {
+function planClaudeCodeInstall({ projectDir, packageRoot = path.join(__dirname, '..'), mode = 'enforce' } = {}) {
   if (!['enforce', 'advisory'].includes(mode)) throw new TypeError('mode must be enforce or advisory');
   const root = path.resolve(projectDir || process.cwd());
+  const packFiles = fs.readdirSync(path.join(packageRoot, 'policy', 'packs'))
+    .filter((name) => name.endsWith('.yaml')).sort();
+  return {
+    project: root, adapter: 'claude-code', mode, dry_run: true, hooks: [...HOOK_EVENTS],
+    writes: [
+      path.join(root, '.claude', 'settings.json'),
+      ...packFiles.map((file) => path.join(root, '.leadline', 'packs', file)),
+      path.join(root, '.leadline', 'config.yaml'),
+      path.join(root, '.leadline', '.gitignore'),
+    ],
+  };
+}
+
+function installClaudeCode({ projectDir, packageRoot = path.join(__dirname, '..'), mode = 'enforce' } = {}) {
+  const plan = planClaudeCodeInstall({ projectDir, packageRoot, mode });
+  const root = plan.project;
   const claudeDir = path.join(root, '.claude');
   const leadlineDir = path.join(root, '.leadline');
   const targetPackDir = path.join(leadlineDir, 'packs');
@@ -380,5 +449,6 @@ function readTrace(projectDir, sessionId) {
 
 module.exports = {
   CLAUDE_CODE_CAPABILITIES, HOOK_EVENTS, _withStateLock: withStateLock,
-  handleClaudeHook, installClaudeCode, readTrace, renderDecisionTrace, renderInjection,
+  handleClaudeHook, installClaudeCode, planClaudeCodeInstall, readTrace,
+  renderDecisionTrace, renderInjection, stripInjectedSpans,
 };

@@ -87,10 +87,11 @@ Four evidence families, mapped by configured routes (`policy/routes.yaml`) and e
 ## Get started (60 seconds)
 
 ```bash
-npx github:Nazim22/leadline init --claude-code --dry-run   # advisory: observes, never blocks
+npx github:Nazim22/leadline init --claude-code --mode advisory --dry-run # preview only; writes nothing
+npx github:Nazim22/leadline init --claude-code --mode advisory           # install observation-only hooks
 # work normally for a while, then:
-npx github:Nazim22/leadline trace --project . --session <id>  # what WOULD have been caught
-npx github:Nazim22/leadline init --claude-code             # flip to enforce
+npx github:Nazim22/leadline trace --project . --session <id>            # what WOULD have been caught
+npx github:Nazim22/leadline init --claude-code --mode enforce            # flip to enforce
 ```
 
 (An npm package — plain `npx leadline` — is coming; the GitHub specifier above works today.)

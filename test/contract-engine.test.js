@@ -236,9 +236,116 @@ test('human approval binds to the exact protected operation', () => {
   assert.equal(core.beforeTool(state, terraform).verdict, 'DENY');
   assert.equal(core.beforeTool(state, terraform).verdict, 'ASK');
   assert.notEqual(core.afterTool(state, kubectl, { value: 'deleted', is_error: false }).trace?.receipt?.human_approval_followed, true);
-  assert.equal(core.beforeTool(state, terraform).verdict, 'ASK');
   assert.equal(core.afterTool(state, terraform, { value: 'applied', is_error: false }).trace.receipt.human_approval_followed, true);
   assert.equal(core.beforeTool(state, kubectl).verdict, 'DENY');
+});
+
+test('a missing correction target abstains immediately and retires the rule', () => {
+  const core = createContractEngine({
+    planner, packs, mode: 'enforce', routeAvailable: (route) => route !== 'Read .leadline/access-map.md',
+  });
+  const state = core.begin('Deploy the service', { sessionId: 'missing', turnId: 'target' }).state;
+  const deploy = { provider: 'Bash', name: 'Bash', args: { command: 'terraform apply' } };
+  const first = core.beforeTool(state, deploy);
+  assert.equal(first.verdict, 'ABSTAIN');
+  assert.equal(first.block, false);
+  assert.equal(first.trace.attempted, 'Bash');
+  assert.equal(first.trace.receipt.failure, 'unsatisfiable');
+  assert.equal(first.trace.receipt.fire_count, 0);
+  assert.match(first.trace.receipt.rule_id, /access-map/);
+  assert.equal(core.beforeTool(state, deploy).verdict, 'ALLOW');
+  assert.equal(core.beforeTool(state, deploy).trace, null);
+});
+
+test('the third correction abstains once, retires the step, and allows the call', () => {
+  const core = engine();
+  const state = stateFor('Who calls performSync?');
+  const wrong = { provider: 'Grep', name: 'Grep', args: { pattern: 'performSync' } };
+  assert.equal(core.beforeTool(state, wrong).verdict, 'DENY');
+  assert.equal(core.beforeTool(state, wrong).verdict, 'DENY');
+  const third = core.beforeTool(state, wrong);
+  assert.equal(third.verdict, 'ABSTAIN');
+  assert.equal(third.block, false);
+  assert.equal(third.trace.attempted, 'Grep');
+  assert.equal(third.trace.receipt.failure, 'unsatisfiable');
+  assert.equal(third.trace.receipt.fire_count, 3);
+  assert.ok(typeof third.trace.receipt.rule_id === 'string' && third.trace.receipt.rule_id.length > 0);
+  assert.equal(core.beforeTool(state, wrong).verdict, 'ALLOW');
+  assert.equal(core.beforeTool(state, wrong).trace, null);
+});
+
+test('an obligation older than fifteen minutes abstains on its next corrective fire', () => {
+  let clock = new Date('2026-08-03T20:00:00.000Z');
+  const core = createContractEngine({ planner, packs, mode: 'enforce', now: () => clock });
+  const state = core.begin('Who calls performSync?', { sessionId: 'expiry', turnId: 'time' }).state;
+  clock = new Date('2026-08-03T20:15:00.000Z');
+  const decision = core.beforeTool(state, { provider: 'Grep', name: 'Grep', args: { pattern: 'performSync' } });
+  assert.equal(decision.verdict, 'ABSTAIN');
+  assert.equal(decision.block, false);
+  assert.equal(decision.trace.receipt.failure, 'unsatisfiable');
+  assert.equal(decision.trace.receipt.fire_count, 1);
+});
+
+test('protected-operation correction budget spans fresh call ids for the same command', () => {
+  const core = createContractEngine({ planner, packs, mode: 'enforce', routeAvailable: () => true });
+  const state = core.begin('Deploy the service', { sessionId: 'protected', turnId: 'fresh-ids' }).state;
+  const deploy = (callId) => ({
+    provider: 'Bash', name: 'Bash', call_id: callId, args: { command: 'terraform apply' },
+  });
+  assert.equal(core.beforeTool(state, deploy('call-1')).verdict, 'DENY');
+  assert.equal(core.beforeTool(state, deploy('call-2')).verdict, 'ASK');
+  const third = core.beforeTool(state, deploy('call-3'));
+  assert.equal(third.verdict, 'ABSTAIN');
+  assert.equal(third.block, false);
+  assert.equal(third.trace.receipt.fire_count, 3);
+  assert.equal(core.beforeTool(state, deploy('call-4')).verdict, 'ALLOW');
+});
+
+test('protected-operation correction budget spans different matching commands', () => {
+  const core = createContractEngine({ planner, packs, mode: 'enforce', routeAvailable: () => true });
+  const state = core.begin('Deploy the service', { sessionId: 'protected', turnId: 'varying-commands' }).state;
+  const calls = [
+    { provider: 'Bash', name: 'Bash', call_id: 'call-1', args: { command: 'terraform apply' } },
+    { provider: 'Bash', name: 'Bash', call_id: 'call-2', args: { command: 'kubectl delete pod api' } },
+    { provider: 'Bash', name: 'Bash', call_id: 'call-3', args: { command: 'helm upgrade api chart/' } },
+  ];
+  assert.equal(core.beforeTool(state, calls[0]).verdict, 'DENY');
+  assert.equal(core.beforeTool(state, calls[1]).verdict, 'ASK');
+  const third = core.beforeTool(state, calls[2]);
+  assert.equal(third.verdict, 'ABSTAIN');
+  assert.equal(third.block, false);
+  assert.equal(third.trace.receipt.fire_count, 3);
+});
+
+test('protected-operation age budget spans varying calls', () => {
+  let clock = new Date('2026-08-03T20:00:00.000Z');
+  const core = createContractEngine({
+    planner, packs, mode: 'enforce', routeAvailable: () => true, now: () => clock,
+  });
+  const state = core.begin('Deploy the service', { sessionId: 'protected', turnId: 'varying-age' }).state;
+  assert.equal(core.beforeTool(state, {
+    provider: 'Bash', name: 'Bash', call_id: 'call-1', args: { command: 'terraform apply' },
+  }).verdict, 'DENY');
+  clock = new Date('2026-08-03T20:15:00.000Z');
+  const expired = core.beforeTool(state, {
+    provider: 'Bash', name: 'Bash', call_id: 'call-2', args: { command: 'kubectl delete pod api' },
+  });
+  assert.equal(expired.verdict, 'ABSTAIN');
+  assert.equal(expired.block, false);
+  assert.equal(expired.trace.receipt.fire_count, 2);
+});
+
+test('all emitted trace rows have a non-empty attempted and receipt rule id', () => {
+  const core = engine();
+  const state = stateFor('Who calls performSync?');
+  const rows = [
+    core.beforeTool(state, { provider: 'Grep', name: 'Grep', args: { pattern: 'performSync' } }).trace,
+    core.beforeStop(state, 'Done.').trace,
+  ];
+  for (const row of rows) {
+    assert.ok(typeof row.attempted === 'string' && row.attempted.length > 0);
+    assert.ok(typeof row.receipt.rule_id === 'string' && row.receipt.rule_id.length > 0);
+  }
 });
 
 test('stop blocks twice then warns and allows to prevent a session lockup', () => {

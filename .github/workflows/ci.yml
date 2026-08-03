@@ -56,5 +56,25 @@ jobs:
       - name: Run test suite
         run: npm test
 
+      - name: Smoke the real init path
+        shell: bash
+        run: |
+          set -euo pipefail
+          dry_target="$(mktemp -d)/not-created"
+          node ./bin/leadline.js init --claude-code --project "$dry_target" --mode advisory --dry-run > "$RUNNER_TEMP/leadline-init-preview.json"
+          test ! -e "$dry_target"
+          target="$(mktemp -d)"
+          node ./bin/leadline.js init --claude-code --project "$target" --mode advisory > "$RUNNER_TEMP/leadline-init-result.json"
+          node - "$target" <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const target = process.argv[2];
+          const settings = JSON.parse(fs.readFileSync(path.join(target, '.claude', 'settings.json'), 'utf8'));
+          const events = ['UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'Stop'];
+          if (!events.every((event) => settings.hooks?.[event]?.length === 1)) process.exit(1);
+          const config = fs.readFileSync(path.join(target, '.leadline', 'config.yaml'), 'utf8');
+          if (!config.includes('mode: advisory')) process.exit(1);
+          NODE
+
       - name: Run frozen benchmark
         run: npm run bench

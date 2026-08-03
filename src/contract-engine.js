@@ -22,6 +22,9 @@ const RULE_KEYS = [
 ];
 const TEMPLATE_KEYS = ['unmet', 'corrective', 'alternative'];
 const TRACE_KEYS = ['obligation', 'family', 'attempted', 'verdict', 'corrected_route', 'receipt'];
+// Internal anti-lockup ceiling: the third corrective fire or 15 elapsed minutes retires the obligation.
+const MAX_CORRECTION_FIRES = 3;
+const MAX_CORRECTION_AGE_MS = 15 * 60 * 1000;
 
 function exactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -195,11 +198,25 @@ function fill(template, values) {
   return String(template).replace(/\{([a-z_]+)\}/gu, (_match, key) => String(values[key] ?? ''));
 }
 
-function traceRow({ obligation, family, attempted = null, verdict, correctedRoute = null, receipt = null }) {
+function validateTraceRow(trace) {
+  if (!trace || Object.keys(trace).join('\0') !== TRACE_KEYS.join('\0')) {
+    throw new TypeError('trace must contain the ordered Leadline trace fields');
+  }
+  if (!nonemptyString(trace.obligation) || !nonemptyString(trace.family)
+      || !nonemptyString(trace.attempted) || !DECISION_SET.has(trace.verdict)
+      || (trace.corrected_route !== null && !nonemptyString(trace.corrected_route))
+      || !trace.receipt || typeof trace.receipt !== 'object' || Array.isArray(trace.receipt)
+      || !nonemptyString(trace.receipt.rule_id)) {
+    throw new TypeError('trace obligation, family, attempted, verdict, and receipt.rule_id are required');
+  }
+  return true;
+}
+
+function traceRow({ obligation, family, attempted, verdict, correctedRoute = null, receipt }) {
   const trace = {
     obligation, family, attempted, verdict, corrected_route: correctedRoute, receipt,
   };
-  if (Object.keys(trace).join('\0') !== TRACE_KEYS.join('\0')) throw new Error('trace field order changed');
+  validateTraceRow(trace);
   return trace;
 }
 
@@ -235,7 +252,10 @@ function denialFor(rule, step, verdict, mode, attempted, extraReceipt = {}) {
 }
 
 function currentStep(state) {
-  return state.contract.steps.find((step) => !state.satisfied_step_ids.includes(step.step_id)) || null;
+  state.retired_step_ids ||= [];
+  return state.contract.steps.find((step) => (
+    !state.satisfied_step_ids.includes(step.step_id) && !state.retired_step_ids.includes(step.step_id)
+  )) || null;
 }
 
 function hasFreshRuleSatisfaction(state, rule, now) {
@@ -260,33 +280,113 @@ function negotiateAdapterMode(capabilities = {}) {
   return 'AUDIT';
 }
 
-function createContractEngine({ planner, packs, mode = 'enforce', now = () => new Date() } = {}) {
+function createContractEngine({
+  planner, packs, mode = 'enforce', now = () => new Date(), routeAvailable = () => true,
+} = {}) {
   if (!planner || typeof planner.plan !== 'function') throw new TypeError('planner is required');
   if (!Array.isArray(packs)) throw new TypeError('packs must be an array');
   if (!['enforce', 'advisory'].includes(mode)) throw new TypeError('mode must be enforce or advisory');
+  if (typeof routeAvailable !== 'function') throw new TypeError('routeAvailable must be a function');
   const rules = packs.flatMap((pack) => pack.rules);
 
   function begin(prompt, { sessionId, turnId } = {}) {
     if (!nonemptyString(sessionId) || !nonemptyString(turnId)) throw new TypeError('sessionId and turnId are required');
+    const contract = planner.plan(prompt, { turnId });
+    const startedAt = now().valueOf();
     return {
       state: {
         schema_version: '1.0', session_id: sessionId, turn_id: turnId,
-        contract: planner.plan(prompt, { turnId }), mode,
+        contract, mode,
         satisfied_step_ids: [], satisfied_rules: {}, pending_rule_id: null,
+        pending_obligation_key: null,
         rule_denials: {}, awaiting_approval_rule_id: null, awaiting_approval: null,
         stop_denials: {}, last_denial: null,
+        correction_fires: {},
+        obligation_started_at: Object.fromEntries(
+          contract.steps.map((step) => [`step:${step.step_id}`, startedAt]),
+        ),
+        retired_step_ids: [], retired_rule_operations: [],
       },
     };
+  }
+
+  function retire(state, { kind, id, retirementKey = id }) {
+    if (kind === 'step') {
+      state.retired_step_ids ||= [];
+      if (!state.retired_step_ids.includes(id)) state.retired_step_ids.push(id);
+      return;
+    }
+    state.retired_rule_operations ||= [];
+    if (!state.retired_rule_operations.includes(retirementKey)) {
+      state.retired_rule_operations.push(retirementKey);
+    }
+    if (state.pending_rule_id === id && state.pending_obligation_key === retirementKey) {
+      state.pending_rule_id = null;
+      state.pending_obligation_key = null;
+      state.awaiting_approval_rule_id = null;
+      state.awaiting_approval = null;
+    }
+  }
+
+  function abstainUnsatisfiable(state, {
+    kind, id, retirementKey = id, obligation, family, attempted, correctedRoute, fireCount,
+  }) {
+    retire(state, { kind, id, retirementKey });
+    return emitDecision({
+      verdict: 'ABSTAIN',
+      trace: traceRow({
+        obligation, family, attempted, verdict: 'ABSTAIN', correctedRoute,
+        receipt: { rule_id: id, failure: 'unsatisfiable', fire_count: fireCount },
+      }),
+    });
+  }
+
+  function correctionThreshold(state, details) {
+    const key = `${details.kind}:${details.retirementKey || details.id}`;
+    state.correction_fires ||= {};
+    state.obligation_started_at ||= {};
+    const fireCount = (state.correction_fires[key] || 0) + 1;
+    state.correction_fires[key] = fireCount;
+    const timestamp = now().valueOf();
+    if (!Number.isFinite(state.obligation_started_at[key])) state.obligation_started_at[key] = timestamp;
+    const age = timestamp - state.obligation_started_at[key];
+    if (fireCount < MAX_CORRECTION_FIRES && age < MAX_CORRECTION_AGE_MS) return null;
+    return abstainUnsatisfiable(state, { ...details, fireCount });
+  }
+
+  function correctionAvailable(state, details) {
+    if (routeAvailable(details.correctedRoute)) return null;
+    const key = `${details.kind}:${details.retirementKey || details.id}`;
+    return abstainUnsatisfiable(state, {
+      ...details, fireCount: state.correction_fires?.[key] || 0,
+    });
   }
 
   function beforeTool(state, toolCall) {
     const attempted = toolIdentity(toolCall);
     const timestamp = now().valueOf();
-    const operationRule = rules.find((rule) => ruleMatchesOperation(rule, toolCall));
+    state.retired_rule_operations ||= [];
+    const matchedOperationRule = rules.find((rule) => ruleMatchesOperation(rule, toolCall));
+    const operationRetirementKey = matchedOperationRule
+      ? `${matchedOperationRule.id}\0${operationFingerprint(toolCall)}` : null;
+    const operationRule = matchedOperationRule
+      && !state.retired_rule_operations.includes(operationRetirementKey)
+      ? matchedOperationRule : null;
     if (operationRule && !hasFreshRuleSatisfaction(state, operationRule, timestamp)) {
+      const details = {
+        kind: 'rule', id: operationRule.id, retirementKey: operationRetirementKey,
+        obligation: 'read the protected-operation prerequisite',
+        family: operationRule.required_family, attempted,
+        correctedRoute: operationRule.preferred_route,
+      };
+      const unavailable = correctionAvailable(state, details);
+      if (unavailable) return unavailable;
       state.rule_denials ||= {};
       if (mode === 'enforce' && state.pending_rule_id === operationRule.id
-          && (state.rule_denials[operationRule.id] || 0) >= 1) {
+          && state.pending_obligation_key === operationRetirementKey
+          && (state.rule_denials[operationRetirementKey] || 0) >= 1) {
+        const expired = correctionThreshold(state, details);
+        if (expired) return expired;
         state.awaiting_approval_rule_id = operationRule.id;
         state.awaiting_approval = {
           rule_id: operationRule.id,
@@ -301,8 +401,11 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
           }),
         });
       }
+      const expired = correctionThreshold(state, details);
+      if (expired) return expired;
       state.pending_rule_id = operationRule.id;
-      state.rule_denials[operationRule.id] = (state.rule_denials[operationRule.id] || 0) + 1;
+      state.pending_obligation_key = operationRetirementKey;
+      state.rule_denials[operationRetirementKey] = (state.rule_denials[operationRetirementKey] || 0) + 1;
       const syntheticStep = {
         evidence_target: { question: 'read the protected-operation prerequisite', subject: '.leadline/access-map.md' },
       };
@@ -322,6 +425,14 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
       && (!candidate.trigger.tool_names?.length
         || candidate.trigger.tool_names.some((name) => name.toLocaleLowerCase() === attempted.toLocaleLowerCase())));
     if (rule && !routeMatches(rule.preferred_route, toolCall)) {
+      const details = {
+        kind: 'step', id: step.step_id, obligation: step.evidence_target.question,
+        family: step.need, attempted, correctedRoute: rule.preferred_route,
+      };
+      const unavailable = correctionAvailable(state, details);
+      if (unavailable) return unavailable;
+      const expired = correctionThreshold(state, details);
+      if (expired) return expired;
       const decision = denialFor(rule, step, 'DENY', mode, attempted, { gaming_attempt: false });
       state.last_denial = { corrected_route: rule.preferred_route, rule_id: rule.id };
       return decision;
@@ -330,7 +441,7 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
       verdict: 'ALLOW',
       trace: traceRow({
         obligation: step.evidence_target.question, family: step.need, attempted, verdict: 'ALLOW',
-        receipt: { rule_id: rule?.id || null, correction_followed: false, satisfied: false },
+        receipt: { rule_id: rule?.id || step.step_id, correction_followed: false, satisfied: false },
       }),
     });
   }
@@ -338,10 +449,12 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
   function afterTool(state, toolCall, result) {
     const attempted = toolIdentity(toolCall);
     const pending = rules.find((rule) => rule.id === state.pending_rule_id);
+    const pendingObligationKey = state.pending_obligation_key;
     const approval = state.awaiting_approval;
     if (pending && approval?.rule_id === pending.id
         && approval.operation_fingerprint === operationFingerprint(toolCall)) {
       state.pending_rule_id = null;
+      state.pending_obligation_key = null;
       state.awaiting_approval_rule_id = null;
       state.awaiting_approval = null;
       return emitDecision({
@@ -356,6 +469,7 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
       if (hasSubstantiveResult(result?.value, toolCall) && !result?.is_error && result?.error == null) {
         state.satisfied_rules[pending.id] = now().valueOf();
         state.pending_rule_id = null;
+        state.pending_obligation_key = null;
         state.awaiting_approval_rule_id = null;
         state.awaiting_approval = null;
         return emitDecision({
@@ -366,6 +480,15 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
           }),
         });
       }
+      const details = {
+        kind: 'rule', id: pending.id, retirementKey: pendingObligationKey || pending.id,
+        obligation: 'read the protected-operation prerequisite',
+        family: pending.required_family, attempted, correctedRoute: pending.preferred_route,
+      };
+      const unavailable = correctionAvailable(state, details);
+      if (unavailable) return unavailable;
+      const expired = correctionThreshold(state, details);
+      if (expired) return expired;
       const message = `Receipt failed: run ${pending.preferred_route} and return a real non-empty result.`;
       return emitDecision({
         verdict: 'CORRECT', message,
@@ -384,13 +507,22 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
       ? rule.required_family
       : familyFor(toolCall);
     if (actualFamily !== step.need) {
-      const message = `Receipt failed: use ${rule?.preferred_route || step.provider} and return evidence for ${subjectFor(step)}.`;
+      const correctedRoute = rule?.preferred_route || step.provider;
+      const details = {
+        kind: 'step', id: step.step_id, obligation: step.evidence_target.question,
+        family: step.need, attempted, correctedRoute,
+      };
+      const unavailable = correctionAvailable(state, details);
+      if (unavailable) return unavailable;
+      const expired = correctionThreshold(state, details);
+      if (expired) return expired;
+      const message = `Receipt failed: use ${correctedRoute} and return evidence for ${subjectFor(step)}.`;
       return emitDecision({
         verdict: 'CORRECT', message,
         trace: traceRow({
           obligation: step.evidence_target.question, family: step.need, attempted, verdict: 'CORRECT',
-          correctedRoute: rule?.preferred_route || step.provider,
-          receipt: { rule_id: rule?.id || null, satisfied: false, failure: 'wrong_source', gaming_attempt: true },
+          correctedRoute,
+          receipt: { rule_id: rule?.id || step.step_id, satisfied: false, failure: 'wrong_source', gaming_attempt: true },
         }),
       });
     }
@@ -405,16 +537,25 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
       fresh,
     });
     if (!satisfaction.satisfied) {
+      const correctedRoute = rule?.preferred_route || step.provider;
+      const details = {
+        kind: 'step', id: step.step_id, obligation: step.evidence_target.question,
+        family: step.need, attempted, correctedRoute,
+      };
+      const unavailable = correctionAvailable(state, details);
+      if (unavailable) return unavailable;
+      const expired = correctionThreshold(state, details);
+      if (expired) return expired;
       const requirement = satisfaction.failure === 'empty' ? 'a real non-empty result'
         : satisfaction.failure === 'stale' ? 'a fresh result'
           : `a result relevant to ${subjectFor(step)}`;
-      const message = `Receipt failed (${satisfaction.failure}): run ${rule?.preferred_route || step.provider} and return ${requirement}.`;
+      const message = `Receipt failed (${satisfaction.failure}): run ${correctedRoute} and return ${requirement}.`;
       return emitDecision({
         verdict: 'CORRECT', message,
         trace: traceRow({
           obligation: step.evidence_target.question, family: step.need, attempted, verdict: 'CORRECT',
-          correctedRoute: rule?.preferred_route || step.provider,
-          receipt: { rule_id: rule?.id || null, satisfied: false, failure: satisfaction.failure },
+          correctedRoute,
+          receipt: { rule_id: rule?.id || step.step_id, satisfied: false, failure: satisfaction.failure },
         }),
       });
     }
@@ -425,7 +566,7 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
       verdict: 'ALLOW',
       trace: traceRow({
         obligation: step.evidence_target.question, family: step.need, attempted, verdict: 'ALLOW',
-        receipt: { rule_id: rule?.id || null, satisfied: true, correction_followed: Boolean(correctionFollowed) },
+        receipt: { rule_id: rule?.id || step.step_id, satisfied: true, correction_followed: Boolean(correctionFollowed) },
       }),
     });
   }
@@ -439,20 +580,23 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
     const route = pending?.preferred_route
       || rules.find((rule) => ruleMatchesStep(rule, step))?.preferred_route
       || step.provider;
+    const key = pending?.id || step.step_id;
     if (explicitAbstention(finalMessage)) {
       return emitDecision({
         verdict: 'ABSTAIN',
-        trace: traceRow({ obligation, family, verdict: 'ABSTAIN', correctedRoute: route, receipt: { reason: String(finalMessage).trim() } }),
+        trace: traceRow({
+          obligation, family, attempted: 'Stop', verdict: 'ABSTAIN', correctedRoute: route,
+          receipt: { rule_id: key, reason: String(finalMessage).trim() },
+        }),
       });
     }
-    const key = pending?.id || step.step_id;
     const denials = state.stop_denials[key] || 0;
     if (denials >= 2) {
       return emitDecision({
         verdict: 'CORRECT', message: `WARN: allowing completion after two Stop denials; ${obligation} remains unmet.`,
         trace: traceRow({
-          obligation, family, verdict: 'CORRECT', correctedRoute: route,
-          receipt: { satisfied: false, anti_lockup_downgrade: true, stop_denials: denials },
+          obligation, family, attempted: 'Stop', verdict: 'CORRECT', correctedRoute: route,
+          receipt: { rule_id: key, satisfied: false, anti_lockup_downgrade: true, stop_denials: denials },
         }),
       });
     }
@@ -465,8 +609,8 @@ function createContractEngine({ planner, packs, mode = 'enforce', now = () => ne
     return emitDecision({
       verdict: mode === 'enforce' ? 'DENY' : 'CORRECT', message, block: mode === 'enforce',
       trace: traceRow({
-        obligation, family, verdict: mode === 'enforce' ? 'DENY' : 'CORRECT', correctedRoute: route,
-        receipt: { satisfied: false, stop_denials: state.stop_denials[key] },
+        obligation, family, attempted: 'Stop', verdict: mode === 'enforce' ? 'DENY' : 'CORRECT', correctedRoute: route,
+        receipt: { rule_id: key, satisfied: false, stop_denials: state.stop_denials[key] },
       }),
     });
   }
@@ -494,5 +638,5 @@ function renderDecisionTrace(rows) {
 
 module.exports = {
   DECISIONS, createContractEngine, emitDecision, loadPolicyPacks, negotiateAdapterMode,
-  renderDecisionTrace, validatePack,
+  renderDecisionTrace, validatePack, validateTraceRow,
 };

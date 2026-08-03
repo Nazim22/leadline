@@ -7,7 +7,7 @@ const YAML = require('yaml');
 const { runBenchmark } = require('../src/benchmark');
 const { createPlanner } = require('../src/planner');
 const {
-  handleClaudeHook, installClaudeCode, readTrace, renderDecisionTrace,
+  handleClaudeHook, installClaudeCode, planClaudeCodeInstall, readTrace, renderDecisionTrace,
 } = require('../src/claude-code');
 
 const root = path.join(__dirname, '..');
@@ -33,7 +33,7 @@ function usage() {
     'usage:',
     '  leadline route <prompt>',
     '  leadline bench',
-    '  leadline init --claude-code [--project <dir>] [--dry-run]',
+    '  leadline init --claude-code [--project <dir>] [--mode <advisory|enforce>] [--dry-run]',
     '  leadline hook <UserPromptSubmit|PreToolUse|PostToolUse|Stop> [--project <dir>]',
     '  leadline trace [--project <dir>] [--session <id>]',
     '',
@@ -79,7 +79,12 @@ function main(argv = process.argv.slice(2), io = {}) {
   if (command === 'init') {
     if (!args.includes('--claude-code')) { stderr.write('leadline init requires --claude-code\n'); return 2; }
     const projectDir = path.resolve(takeOption(args, '--project', cwd));
-    const result = installClaudeCode({ projectDir, packageRoot: root, mode: args.includes('--dry-run') ? 'advisory' : 'enforce' });
+    const mode = takeOption(args, '--mode', 'enforce');
+    if (!['enforce', 'advisory'].includes(mode)) throw new TypeError('mode must be advisory or enforce');
+    const options = { projectDir, packageRoot: root, mode };
+    const result = args.includes('--dry-run')
+      ? planClaudeCodeInstall(options)
+      : installClaudeCode(options);
     stdout.write(`${JSON.stringify(result)}\n`);
     return 0;
   }

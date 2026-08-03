@@ -11,6 +11,8 @@ npm run bench     # frozen routing/satisfaction benchmark — run it if you touc
 
 There is no hidden CI magic yet: the suite you run locally is the gate. If you change routing behavior, paste the before/after bench output in the PR description.
 
+**Platform note (honest).** The router, matcher, planner, receipts, and Claude Code hooks run on any Node ≥18 platform, and so does `npm run bench`. The corpus labeling harness (`scripts/label-corpus.js`) requires **Linux** — it uses `/proc/self/fd` with `O_NOFOLLOW` for race-safe I/O and fails with `race-safe exam I/O requires Linux /proc/self/fd and O_NOFOLLOW` elsewhere; `extract-corpus.js` degrades gracefully via `(O_NOFOLLOW || 0)`. Some replay and provenance tests also exercise symlink-rejection paths, which need symlink-creation rights (e.g. Windows Developer Mode). If you're on a non-Linux host, expect `scripts/label-corpus.js` to error while the core router suites and `npm run bench` stay green — that's a harness constraint, not a regression you introduced.
+
 ## What goes where
 
 * **Quick fixes** (typo, doc bug, obvious regression) → straight to a PR.

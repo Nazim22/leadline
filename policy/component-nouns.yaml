@@ -1,0 +1,13 @@
+# Project-registerable component nouns (issue #10 direction #3).
+# Each noun behaves like the built-in 'API' noun: when it appears with a
+# live/recorded-state qualifier (alive, up, down, responding, running, live,
+# health, status, right now, today, still, currently, any more), the prompt
+# routes to the runtime family. Precision > recall: a noun alone never routes.
+# Per-project: drop a copy next to tells.yaml in your own checkout to register
+# your domain nouns.
+nouns:
+  - fleet-hub
+  - connector
+  - ingest
+  - vendor-archive
+  - store

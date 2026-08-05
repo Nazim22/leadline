@@ -38,6 +38,16 @@ tells:
     terminal: true
     phrases: ["running now", "currently deployed", "is deployed", "is it live", "it is live", "which version is live", "what version is deployed", "health endpoint", "is * responding", "responding now", "alive now", "live right now", "port * open", "is the * up"]
 
+  # ---- runtime: current/recorded-state qualifier co-occurring with a system/component noun ----
+  # Issue #10: natural phrasings of the core "what is the current/recorded state?" question
+  # class were missed (precision>recall inventory). These are high-precision: each phrase only
+  # fires on a live/recorded-state qualifier tied to a system/component/connector noun, so it is
+  # almost never another family. Deterministic, local; no LLM in the hook loop.
+  - id: runtime-current-state
+    family: runtime
+    terminal: true
+    phrases: ["still * from", "still read", "still ingest", "still file-based", "dependent on", "is our ingest still", "does * still ", "are we dependent", "how does * ingest", "ingest * today", "read * from * today", "still * today", "alive right now", "any more", "currently * any way", "in any way"]
+
 # Clause-scoped exclusions. When a clause contains an exclude phrase, the named family
 # is suppressed FOR THAT CLAUSE only — not a global abstention.
 # e.g. "tell me what we decided, but don't check whether it's deployed" → historical only.

@@ -94,7 +94,17 @@ npx github:Nazim22/leadline trace --project . --session <id>            # what W
 npx github:Nazim22/leadline init --claude-code --mode enforce            # flip to enforce
 ```
 
-(An npm package — plain `npx leadline` — is coming; the GitHub specifier above works today.)
+(An npm package — plain `npx leadline` — is on the roadmap; the GitHub specifier above works today. For a local checkout that is always current, clone and link:)
+
+```bash
+git clone https://github.com/Nazim22/leadline.git
+cd leadline
+npm install
+npm link            # makes `leadline` available on your PATH from this checkout
+leadline init --claude-code --dry-run
+```
+
+> **Node:** requires Node ≥ 18 (CI proves 18 / 20 / 22). The exam/replay harness is Linux-only today (see `docs/REPLAY.md`); the router, hooks, and `npm run bench` are platform-independent.
 
 Dry-run mode is the benchmark: it watches your own sessions and shows you your agent’s wrong-source calls, empty receipts, and unproven “done” claims — your data, your numbers — before a single call is ever denied.
 

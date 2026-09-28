@@ -19,7 +19,7 @@ A deterministic fixture test that a hook emits a warning is **not an agent trial
 Include stale deployment/config pointers, an already-existing daemon, superseded API/endpoint, stale claim inside a fresh file, ledger reversal, partial-evidence/positive-control failures, stale handoff, provenance mismatch and ignored-warning cases. Include unchanged-old and unknown-freshness controls to expose false alarms. Provenance mismatch by itself must not make a correct answer wrong.
 
 ## Results
-Actual agent results are pending until the generic core is integrated and paired trials run. No numerical effectiveness claim is made by this document. The final handoff must replace this section with retained result locations, exact commands, identities, counts, denominators and limitations; unavailable trials remain explicitly unavailable rather than simulated.
+The completed protocol-2 pilot is reported below. Earlier checkpoint sections describe historical execution stages, not current pending work. Installed-host acceptance remains unverified.
 
 ### Exploratory pilot checkpoint
 Fourteen actual OFF-arm isolated-context agent executions have completed, with fourteen collected responses and no execution failures. No ON executions or scoring have occurred at this checkpoint, so this is not a paired result and provides no effectiveness estimate. Observed model alias: `openai/gpt-6-astra`; this is not an immutable model-weight attestation.
@@ -108,3 +108,23 @@ Future protocol-2 results must be a new paired cohort, not paired retrospectivel
 with protocol 1. This is source-identical assistance, not installed-host
 interception; isolation, model identity and imported execution provenance retain
 the limitations above. A citation is validated by path, not semantic entailment.
+
+
+## Completed protocol-2 agent pilot — 2026-09-28
+
+Product: `dfb8d85c125f8e741f8fb796f61e4a8e72cabacc`, tree `785b7c82135b2bca66d03c2929801b2a0817bc3f`. Fixture implementation: `b322a030c0287175b7667c02871571fd79215db7`. Observed model alias: `openai/gpt-6-astra`. Twenty-eight actual independent-context executions, fourteen pairs, all retained and independently rescored. **No observed net task-success benefit, and no stale-answer reduction: both arms had zero stale answers.**
+
+| Arm | Correct | Stale | Abstain | Incorrect | Invalid | Execution failure | Task success |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| OFF | 11 | 0 | 3 | 0 | 0 | 0 | 13/14 |
+| ON | 12 | 0 | 1 | 0 | 1 | 0 | 13/14 |
+
+Paired outcomes: twelve both-success, one ON-only, one OFF-only, zero neither. Net task-success delta: zero. Appropriate abstention counts as success on the two designated unknown tasks, not as a correct decision.
+
+ON improved partial-evidence from abstention to correct. On missing-freshness it substantively abstained but cited `keel-context.txt`, which the frozen scorer excludes; INVALID remains unchanged. This is a scoring/protocol limitation, not demonstrated factual regression. Neither responses nor scorer were changed after observing it. No significance or population claim is justified.
+
+The actual core supplied eight attributed and six UNKNOWN results; all were delivered. UNKNOWN retained raw exit 3 and `failure: nonzero_exit`, separately marked delivered. Both arms had identical fictional source-derived registries. Original protocol-1 OFF records were not retroactively paired or modified.
+
+Preparation: `python3 benchmark/bench.py prepare RUNROOT --protocol 2`. Real product invocation: `core_adapter.context(case_dir, product_dir, PRODUCT_SHA, 120, bench.invoke)`; exact per-case CLI argv/stdout/stderr/exit/timing retained. Scoring: `python3 benchmark/bench.py score RUNROOT --responses RUNROOT/responses.json`. Private artifact bundle `pebble-protocol2-20260928-0738` retains manifest, responses, core records, source hashes, schedule, prompts, transcripts, rationales and RESULTS.md; its private storage locator is supplied with the review handoff, not embedded in public documentation.
+
+Limitations: alternating submission order, not serialized completion (up to four overlapping runs); all core outputs precomputed; first three prompt wordings differed slightly before standardization. Each model read its own file-content map and submitted structured output, rather than navigating a repository. Histories showed twenty-eight own-file reads and twenty-eight structured outputs, no other child tools. Context isolation is not a security sandbox: normal bootstrap/tool surface was inherited. Model alias does not attest immutable weights. Timings include runtime overhead. Citation grading checks paths, not entailment. This is a tiny supplied-context assistance pilot, **not installed Claude delivery, permission behavior, graph quality, production safety, or release clearance**. Product source remained under a separate consent-boundary HOLD at this measurement; later fixes do not inherit these exact-source results without a stated compatibility check.

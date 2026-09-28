@@ -1,4 +1,6 @@
-# Leadline: context you can trace, not context you must trust
+# Context integrity: context you can trace, not context you must trust
+
+> Naming status: the public product name is pending owner selection. References to Leadline describe the existing codebase and unchanged CLI, not an approved public brand. Keep display naming in one shared constant/configuration; do not rename files, packages or commands before that decision.
 
 ## Product promise
 Leadline gives an agent a short route to the declared authoritative source, marks uncertainty and stale context, and turns detected context debt into explicit closure work. It does not determine truth from timestamps, replace authorization, or make arbitrary agents obey an MCP response.

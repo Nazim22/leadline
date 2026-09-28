@@ -20,3 +20,10 @@ Include stale deployment/config pointers, an already-existing daemon, superseded
 
 ## Results
 Actual agent results are pending until the generic core is integrated and paired trials run. No numerical effectiveness claim is made by this document. The final handoff must replace this section with retained result locations, exact commands, identities, counts, denominators and limitations; unavailable trials remain explicitly unavailable rather than simulated.
+
+### Exploratory pilot checkpoint
+Fourteen actual OFF-arm isolated-context agent executions have completed, with fourteen collected responses and no execution failures. No ON executions or scoring have occurred at this checkpoint, so this is not a paired result and provides no effectiveness estimate. Observed model alias: `openai/gpt-6-astra`; this is not an immutable model-weight attestation.
+
+The pilot rendered each case and its files inline rather than exercising a filesystem tool workflow. Independent contexts inherited normal runtime bootstrap/tool availability; no retrieval/execution tools appeared in the inspected trial histories, but a strict case-only security boundary cannot be certified. All OFF executions preceded ON, deviating from the proposed alternating order. Timings include runtime overhead. Retained artifacts contain actual response strings, rationale, execution IDs and measured transcript timings; provenance extracts are not full transport captures.
+
+The original fixtures predate the explicit-claim registry interface. Missing registry must remain a real UNKNOWN, not be repaired with a handcrafted ON-only answer. If a new paired run supplies metadata, supply the same evidence-derived metadata to both arms and preserve this original pilot separately. Neither pilot demonstrates installed-host interception.

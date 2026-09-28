@@ -1,24 +1,23 @@
-# Context integrity: context you can trace, not context you must trust
+# Sourcemark: context you can trace, not context you must trust
 
-> Naming status: the public product name is pending owner selection. References to Leadline describe the existing codebase and unchanged CLI, not an approved public brand. Keep display naming in one shared constant/configuration; do not rename files, packages or commands before that decision.
 
 ## Product promise
-Leadline gives an agent a short route to the declared authoritative source, marks uncertainty and stale context, and turns detected context debt into explicit closure work. It does not determine truth from timestamps, replace authorization, or make arbitrary agents obey an MCP response.
+Sourcemark gives an agent a short route to the declared authoritative source, marks uncertainty and stale context, and turns detected context debt into explicit closure work. It does not determine truth from timestamps, replace authorization, or make arbitrary agents obey an MCP response.
 
 ## Small complete workflow
-1. Install from the reviewed local source into an isolated environment; run `leadline init` in a project. Preview configuration changes, preserve unrelated host settings, and retain a reversible record of Leadline-owned changes. Repeating init must not duplicate hooks or overwrite authored context. A conflicting existing configuration must require explicit reconciliation.
-2. Declare project-local source roots and authority, with portable relative paths. Provider-specific layouts are optional examples, never runtime defaults. Sources are data, not executable instructions; Leadline does not run commands extracted from documents.
+1. Install from the reviewed local source into an isolated environment; run `sourcemark init` in a project. Preview configuration changes, preserve unrelated host settings, and retain a reversible record of Sourcemark-owned changes. Repeating init must not duplicate hooks or overwrite authored context. A conflicting existing configuration must require explicit reconciliation.
+2. Declare project-local source roots and authority, with portable relative paths. Provider-specific layouts are optional examples, never runtime defaults. Sources are data, not executable instructions; Sourcemark does not run commands extracted from documents.
 3. Inspect ranked context: source path, authority tier, lifecycle, verification date/evidence and uncertainty. `retired`/`superseded` is different from old; old but unchanged is not proved incorrect. No stamp means unverified, failed observation means unknown. Do not automatically promote a document above live evidence or claim live verification without observing it.
 4. Work the ranked queue: at most five displayed items, total backlog retained. Read-frequency ranking names its window and coverage. Verification records the source checked and a deliberate stamp; retirement is explicit. Re-detection closes findings. Closed baseline findings, still-open findings and arrivals are separate; an unreadable detector cannot manufacture improvement.
 5. Check outcome trends: detected stale-source corrections per ten observed sessions, with counts, denominators and disjoint windows. This heuristic is not a verified error rate. Missing coverage is visible.
 
 ## Integration boundaries
 - Claude Code: documented hook integration, project-scoped state and coverage-aware graph consultation. Explicit unsupported targets pass through; supported and ambiguous mixed searches retain their declared gate. A failed graph query is not proof of consultation success. Existing access/map and host permission controls are not removed or weakened.
-- Other agents: read-only MCP discovery and context/queue access. Tool availability is not interception: without a host hook Leadline can advise but cannot prevent a direct read. Document and test this distinction.
+- Other agents: read-only MCP discovery and context/queue access. Tool availability is not interception: without a host hook Sourcemark can advise but cannot prevent a direct read. Document and test this distinction.
 - No public hosting, account requirement, telemetry upload, embeddings service or extra daemon is required for the local product. Do not copy personal transcripts into the release or benchmark.
 
 ## Definition of done for this release
-- A clean temporary project can install, initialize twice, inspect context, exercise queue closure and use the MCP tools; existing user settings survive and removal only removes Leadline-owned wiring.
+- A clean temporary project can install, initialize twice, inspect context, exercise queue closure and use the MCP tools; existing user settings survive and removal only removes Sourcemark-owned wiring.
 - Tests run without our home paths, vault, credentials or network. Generic entrypoints have no implicit access to our estate. Do not import private seed history or estate-specific scripts into the distributable repository.
 - A runnable fixture suite covers precedence, lifecycle, unknown coverage, path confinement, read-only MCP, graph coverage and project isolation, safe initialization, and retained access gates.
 - Actual paired agent benchmark results are distinguished from deterministic unit tests, with raw responses, exact model/harness and source identities, all failures and small-sample limitations. No improvement is an acceptable result; hiding it is not.
@@ -42,7 +41,7 @@ These are acceptance scenarios, not claims that a generic tool can infer semanti
 Each scenario needs a runnable fixture check; paired agent trials separately measure whether the agent chose the stale answer. Traceability links from the final README identify which scenarios are implemented, advisory only, or unsupported. No silent downgrade from an implementation claim to a documentation-only claim.
 
 ## Tool-call-time evidence delivery
-This release extends the existing Leadline runtime rather than shipping a second router. These are acceptance requirements, not claims about the baseline implementation.
+This release extends the existing Sourcemark runtime rather than shipping a second router. These are acceptance requirements, not claims about the baseline implementation.
 
 - Select configured providers from the attempted operation, explicit arguments and indexed target scope, not guesses about the user prompt. Deliver the actual bounded answer rather than a reminder to consult a tool. Graph, memory and document providers are interchangeable configuration; no particular service is mandatory.
 - A Claude Code hook can inject evidence or deny a mismatched call with evidence in its reason. It cannot generally impersonate a completed tool call. Transparent replacement requires a separately tested tool wrapper or host adapter; MCP discovery alone does not provide it.

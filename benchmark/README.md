@@ -3,7 +3,7 @@
 Stdlib Python 3. Fourteen tiny synthetic repositories, starting with: wrong DB target, existing daemon,
 superseded API, retired endpoint, unchanged old-document control, and unknown
 freshness. **No product result or agent efficacy claim is included.** The tests use
-explicitly labeled protocol stubs, not Leadline and not model trials.
+explicitly labeled protocol stubs, not Sourcemark and not model trials.
 
 ## CLI
 
@@ -13,14 +13,14 @@ python3 benchmark/bench.py prepare /absolute/new/run-directory
 python3 benchmark/bench.py run /absolute/new/run-directory \
   --model 'provider/exact-model-version' \
   --agent-argv '["/absolute/agent-adapter"]' \
-  --core-argv '["/absolute/real-leadline-adapter"]' --timeout 120
+  --core-argv '["/absolute/real-sourcemark-adapter"]' --timeout 120
 python3 benchmark/bench.py score /absolute/new/run-directory \
   --responses /absolute/imported-responses.json
 ```
 
 `prepare` refuses existing roots. Each arm gets an independent fresh case directory,
 with identical baseline files and request. OFF still has the repository's manifest;
-ON adds actual Leadline output. This tests **Leadline activation**, not withholding source
+ON adds actual Sourcemark output. This tests **Sourcemark activation**, not withholding source
 from OFF. Pair order alternates. `run` refuses an existing responses file; prepare a
 new run rather than reuse modified directories. Results checkpoint after each trial.
 
@@ -32,11 +32,11 @@ directory. JSON argv arrays are passed directly to `Popen`, never shell/eval.
 * Agent adapter reads `request.json`, repository files, and (only when present)
   `keel-context.txt`. Stdout must be exactly one response JSON object. Stderr is
   retained. Pass the same model/settings to both arms, fresh agent context each time.
-* Core adapter runs real Leadline against cwd and writes its unmodified product context
+* Core adapter runs real Sourcemark against cwd and writes its unmodified product context
   to stdout. Exit nonzero or empty output becomes a retained ON failure. The runner
   saves stdout to `keel-context.txt`, then invokes the agent. Record exact executable
   argv, core version/SHA and configuration in the experiment record; do not replace
-  Leadline with a handwritten answer generator.
+  Sourcemark with a handwritten answer generator.
 * Timeout kills the process group. No built-in networking or dependencies; adapters
   themselves are trusted executables, not sandboxed. **cwd is not a security boundary.**
   Agent tooling must restrict accessible files to its own case directory. Never expose
@@ -109,7 +109,7 @@ Exact response import record (one per scheduled trial):
     "stderr": ""
   },
   "core": {
-    "argv": ["/absolute/real-leadline-adapter"],
+    "argv": ["/absolute/real-sourcemark-adapter"],
     "stdout": "UNMODIFIED REAL PRODUCT OUTPUT",
     "stderr": "",
     "returncode": 0,

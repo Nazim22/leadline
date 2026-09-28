@@ -110,7 +110,7 @@ Exact response import record (one per scheduled trial):
   },
   "core": {
     "argv": ["/absolute/real-leadline-adapter"],
-    "stdout": "UNMODIFIED REAL KEEL OUTPUT",
+    "stdout": "UNMODIFIED REAL PRODUCT OUTPUT",
     "stderr": "",
     "returncode": 0,
     "failure": null,

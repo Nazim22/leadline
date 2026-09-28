@@ -131,3 +131,11 @@ files should reach the agent, never private manifest or harness sources.
 Well-formed non-abstaining decisions matching neither expected nor planted stale
 values are `incorrect`; malformed schema or invalid evidence paths are `invalid`.
 The DB-tier fixture is a local observation snapshot, never a database/network call.
+
+## Version 2 explicit metadata variant
+
+See `docs/benchmark.md` for the new opt-in `prepare --protocol 2` and pinned real
+public-CLI `--product` adapter. Protocol 1 above remains the default/reproducible
+original. Protocol 2 supplies identical fictional source-quotation registries to
+both arms and accepts structured exit-3 UNKNOWN as delivered context while
+retaining the original nonzero exit and diagnostics. No new agent trials run.

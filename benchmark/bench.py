@@ -10,6 +10,9 @@ import subprocess
 import time
 import uuid
 
+import metadata_v2
+import core_adapter
+
 # Private grading metadata: never materialized inside case directories.
 CASES = [
     ('db-target', 'Select the database target for local tests.', 'local_test', 'legacy_shared',
@@ -75,7 +78,9 @@ def dump(path, value):
     Path(path).write_text(json.dumps(value, indent=2, sort_keys=True) + '\n')
 
 
-def prepare(root):
+def prepare(root, protocol=1):
+    if protocol not in (1, 2):
+        raise ValueError("unsupported protocol")
     root = Path(root).resolve()
     root.mkdir(parents=True, exist_ok=False)
     trials = []
@@ -85,7 +90,10 @@ def prepare(root):
             trial = str(uuid.uuid4())
             directory = root / 'cases' / trial
             directory.mkdir(parents=True)
-            for name, text in files(case).items():
+            fixture = files(case)
+            if protocol == 2:
+                fixture.update(metadata_v2.registries(fixture, case[0]))
+            for name, text in fixture.items():
                 path = directory / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text)
@@ -95,7 +103,7 @@ def prepare(root):
             })
             trials.append(dict(task_id=case[0], pair_id=pair, trial_id=trial,
                                arm=arm, case_dir=str(directory)))
-    dump(root / 'manifest.json', dict(protocol=1, trials=trials))
+    dump(root / 'manifest.json', dict(protocol=protocol, trials=trials, **(dict(variant=metadata_v2.VARIANT) if protocol == 2 else {})))
     return root
 
 
@@ -121,7 +129,10 @@ def invoke(argv, directory, timeout):
     return record
 
 
-def grade(case, raw, failure=None):
+def grade(case, raw, failure=None, protocol=1):
+    allowed = set(files(case))
+    if protocol == 2:
+        allowed.update(metadata_v2.REGISTRY_PATHS)
     if failure:
         return 'failure'
     try:
@@ -130,7 +141,7 @@ def grade(case, raw, failure=None):
         return 'invalid'
     if (not isinstance(value, dict) or set(value) != {'decision', 'abstain', 'evidence'}
             or type(value['abstain']) is not bool or not isinstance(value['evidence'], list)
-            or any(not isinstance(p, str) or p not in files(case) for p in value['evidence'])):
+            or any(not isinstance(p, str) or p not in allowed for p in value['evidence'])):
         return 'invalid'
     if value['abstain']:
         return 'abstain' if value['decision'] is None else 'invalid'
@@ -145,12 +156,19 @@ def grade(case, raw, failure=None):
 
 def manifest(root):
     value = json.loads((Path(root) / 'manifest.json').read_text())
-    if value.get('protocol') != 1:
+    if value.get('protocol') not in (1, 2):
         raise ValueError('unsupported protocol')
     return value['trials']
 
 
-def run(root, model, agent, core, timeout):
+def run(root, model, agent, core, timeout, product=None, product_commit=core_adapter.FROZEN_PRODUCT):
+    protocol = json.loads((Path(root) / "manifest.json").read_text())["protocol"]
+    if protocol == 2:
+        if not product:
+            raise ValueError("protocol 2 requires pinned actual product checkout")
+        core_adapter.verify_product(product, product_commit)
+    elif not core:
+        raise ValueError("protocol 1 requires core argv")
     trials = manifest(root)
     results = []
     for index in range(0, len(trials), 2):
@@ -158,8 +176,11 @@ def run(root, model, agent, core, timeout):
             directory = Path(trial['case_dir'])
             row = dict(trial, model=model, source='argv-agent', core=None)
             if trial['arm'] == 'on':
-                row['core'] = invoke(core, directory, timeout)
-                if row['core']['failure'] or not row['core']['stdout'].strip():
+                row['core'] = (core_adapter.context(directory, product, product_commit, timeout, invoke)
+                               if protocol == 2 else invoke(core, directory, timeout))
+                accepted = (row['core'].get('delivered') if protocol == 2 else
+                            not row['core']['failure'] and bool(row['core']['stdout'].strip()))
+                if not accepted:
                     row.update(raw_response='', failure='core_failure', execution=None)
                     results.append(row)
                     dump(Path(root) / 'responses.json', results)
@@ -173,6 +194,7 @@ def run(root, model, agent, core, timeout):
 
 
 def score(root, rows):
+    protocol = json.loads((Path(root) / "manifest.json").read_text())["protocol"]
     trials = manifest(root)
     expected = {t['trial_id']: t for t in trials}
     seen = {}
@@ -191,7 +213,11 @@ def score(root, rows):
                 raise ValueError('execution.duration_seconds required')
         if row['arm'] == 'on' and not row.get('failure'):
             core = row.get('core')
-            if not isinstance(core, dict) or not core.get('stdout') or not core.get('argv') or core.get('failure'):
+            accepted = (isinstance(core, dict) and bool(core.get('argv')) and
+                (core_adapter.delivered(core, row['task_id'], 'source-observations')
+                 and bool(core.get('product_commit')) and core.get('registry_schema_sha256') == core_adapter.SCHEMA_DIGEST
+                 if protocol == 2 else bool(core.get('stdout')) and not core.get('failure')))
+            if not accepted:
                 raise ValueError('ON requires real core output and exact argv provenance')
         seen[ident] = row
     cases = {c[0]: c for c in CASES}
@@ -200,7 +226,7 @@ def score(root, rows):
     for trial in trials:
         case = cases[trial['task_id']]
         row = seen.get(trial['trial_id'])
-        outcome = grade(case, row['raw_response'], row['failure']) if row else 'failure'
+        outcome = grade(case, row['raw_response'], row['failure'], protocol) if row else 'failure'
         counts[trial['arm']][outcome] += 1
         success = outcome == 'correct' or (case[2] is None and outcome == 'abstain')
         outcomes.append(dict(trial, outcome=outcome, task_success=success, missing=row is None))
@@ -232,24 +258,29 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     p = commands.add_parser('prepare')
     p.add_argument('root')
+    p.add_argument('--protocol', type=int, choices=(1, 2), default=1)
     p = commands.add_parser('run')
     p.add_argument('root')
     p.add_argument('--model', required=True)
     p.add_argument('--agent-argv', required=True, type=argv_list)
-    p.add_argument('--core-argv', required=True, type=argv_list)
+    p.add_argument('--core-argv', type=argv_list)
+    p.add_argument('--product')
+    p.add_argument('--product-commit', default=core_adapter.FROZEN_PRODUCT)
     p.add_argument('--timeout', type=float, default=120)
     p = commands.add_parser('score')
     p.add_argument('root')
     p.add_argument('--responses', required=True)
     args = parser.parse_args()
     if args.command == 'prepare':
-        print(prepare(args.root))
+        print(prepare(args.root, args.protocol))
         return
     root = Path(args.root).resolve()
     if args.command == 'run':
         if args.timeout <= 0 or (root / 'responses.json').exists():
             parser.error('positive timeout and fresh, unexecuted root required')
-        rows = run(root, args.model, args.agent_argv, args.core_argv, args.timeout)
+        if not args.product and not args.core_argv:
+            parser.error("--core-argv (protocol 1) or --product (protocol 2) required")
+        rows = run(root, args.model, args.agent_argv, args.core_argv, args.timeout, args.product, args.product_commit)
     else:
         rows = json.loads(Path(args.responses).read_text())
     report = score(root, rows)

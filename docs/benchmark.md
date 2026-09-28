@@ -27,3 +27,84 @@ Fourteen actual OFF-arm isolated-context agent executions have completed, with f
 The pilot rendered each case and its files inline rather than exercising a filesystem tool workflow. Independent contexts inherited normal runtime bootstrap/tool availability; no retrieval/execution tools appeared in the inspected trial histories, but a strict case-only security boundary cannot be certified. All OFF executions preceded ON, deviating from the proposed alternating order. Timings include runtime overhead. Retained artifacts contain actual response strings, rationale, execution IDs and measured transcript timings; provenance extracts are not full transport captures.
 
 The original fixtures predate the explicit-claim registry interface. Missing registry must remain a real UNKNOWN, not be repaired with a handcrafted ON-only answer. If a new paired run supplies metadata, supply the same evidence-derived metadata to both arms and preserve this original pilot separately. Neither pilot demonstrates installed-host interception.
+
+## Protocol 2: symmetric explicit source observations
+
+Variant `explicit-source-observations-v2` retains all fourteen original source cases
+and the protocol-1 default. Prepare with:
+
+```sh
+python3 benchmark/bench.py prepare /absolute/new/v2-run --protocol 2
+# Only after runtime review clears; this command would execute actual agents:
+python3 benchmark/bench.py run /absolute/new/v2-run --model provider/model \
+  --agent-argv '["/absolute/agent-adapter"]' \
+  --product /absolute/clean/frozen-product \
+  --product-commit 1c3d5a795c1ebb8491cec4e2e48abe15a5d05c01
+```
+
+Both arms contain identical sources, claims, context-map, exact selector and
+`FICTIONAL FIXTURE RECORDS` notice under `.sourcemark/`. All five paths are valid
+citations only in protocol 2. The builder accepts source bytes and subject, never
+private correct/stale keys. Claim values are exact source-line quotations, with
+line locators and SHA-256 source digests; there is no generated answer summary.
+Stale and conflicting quotations remain present. Authors/model/session names are
+explicitly fictional; dates come only from explicit verification/observation text
+(or dated ledger lines), never filesystem mtime or formatting/checkout edits.
+Undated records retain null times rather than fabricated fresh verification.
+The original source provenance strings are narrative characters, not actual
+people or real model executions. `evidence.complete` asserts completeness of the
+quoted line ONLY, not an instrument, search coverage, or absence conclusion.
+
+This is a synthetic exception for this explicitly labeled evaluation, not a
+license to fabricate real registry provenance. Local config/code/ledger/snapshot
+files are declared canonical documents, prose/handoffs memory; none is represented
+as a fresh live probe. Exact scope is `source-observations`, with subject equal to
+the visible case identifier. Reader model is a fictional different reader so the
+product mismatch notice is exercised without asserting an actual agent identity.
+These declarations are identical in both arms. No answer-dependent supersession,
+retirement or correctness-filtering is applied. Consequently multi-line sources
+can conflict and undated/partial/faulty sources can yield UNKNOWN: that is retained,
+not repaired by an ON-only summary. The unchanged-old, missing-freshness,
+partial/positive/inapplicable-control, faulty-instrument and provenance-mismatch
+source cases are unchanged.
+
+`core_adapter.py` runs the public `bin/sourcemark.js context --project ...
+--subject ... --scope ... --model ... --json`, using only the case-local selector.
+It rejects a dirty checkout or a HEAD other than the explicit product pin, and
+checks registry-contract digest
+`ee6dea1ca29c8f8151a257bac6fe9f1091275f0f0b31d4b39fb02836eb1b372e`.
+A reviewed later product pin must be explicitly supplied; schema changes require
+contract review. The adapter does not install dependencies or alter product code.
+Existing Node dependencies/runtime must be supplied by the operator and are not
+cryptographically attested by this harness. Keep the frozen checkout immutable
+throughout execution; this is not a concurrent-writer security boundary.
+
+Predeclared delivery contract: matching subject/scope JSON with `(exit 0,
+status attributed)` OR `(exit 3, status unknown)` is valid delivered context.
+The raw returncode, stdout, stderr and invocation failure remain unchanged (exit
+3 still has `failure: nonzero_exit`); separate `delivered` records acceptance.
+Timeouts, launch errors, other exits and malformed/mismatched JSON are failures.
+No exit is rewritten as zero. The scorer independently applies this contract for
+protocol-2 imports. Product output is copied unchanged to ON `keel-context.txt`;
+OFF sees the same source registries without that extra generated context.
+Protocol 1 retains its original nonzero-is-failure contract and citation set.
+
+### Implementation verification, not efficacy results
+
+18/18 stdlib tests passed including the opt-in fourteen-case real public-CLI test
+against clean archived `1c3d5a795c1ebb8491cec4e2e48abe15a5d05c01`. The moving builder
+checkout was correctly refused as dirty; verification used a benchmark-local
+ignored clean copy, with existing Node dependencies and no installation.
+Run the complete test using `SOURCEMARK_TEST_PRODUCT=/absolute/clean/frozen-product
+python3 -m unittest discover -s benchmark -v`; without the variable the real-CLI
+test is explicitly skipped. The frozen CLI smoke returned 8 attributed / 6 UNKNOWN:
+UNKNOWN for superseded-api, missing-freshness, database-runtime-override,
+partial-evidence, faulty-instrument and ignored-warnings. Those are core delivery
+outcomes, NOT model decisions or benchmark success counts. The product remains
+under runtime HOLD; no new agent trial or efficacy claim is made.
+
+Original fourteen OFF pilot answers/artifacts were neither read nor modified.
+Future protocol-2 results must be a new paired cohort, not paired retrospectively
+with protocol 1. This is source-identical assistance, not installed-host
+interception; isolation, model identity and imported execution provenance retain
+the limitations above. A citation is validated by path, not semantic entailment.

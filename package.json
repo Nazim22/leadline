@@ -25,11 +25,17 @@
   ],
   "keywords": [
     "ai-agents",
-    "coding-agents",
-    "tool-routing",
-    "evidence",
+    "llm",
     "claude-code",
-    "hooks"
+    "mcp",
+    "agent-guardrails",
+    "tool-use",
+    "policy-engine",
+    "evidence",
+    "hooks",
+    "agentic-ai",
+    "developer-tools",
+    "context-engineering"
   ],
   "engines": {
     "node": ">=18"

@@ -1,0 +1,46 @@
+# Leadline
+
+> Leadline is a local-first evidence router and policy engine for coding agents. It emits ordered evidence contracts, enforces routes through Claude Code hooks, grades bound tool-use receipts, traces decisions, and blocks unsupported completion claims.
+
+Pronunciation: “LED-line.”
+Tagline: Sound the source. Bring back proof.
+License: MIT.
+Status: pre-release; run from source. Claude Code is the only shipped host adapter.
+
+## Start here
+
+- [README](README.md): product overview, verified benchmark, source install, and current limitations
+- [Architecture](docs/architecture.md): runtime loop, hook response semantics, state, locks, modes, and trust boundary
+- [Policy packs](docs/policy-packs.md): YAML authoring contract, triggers, receipt rules, and structured-zero convention
+- [Trace format](docs/trace-format.md): JSONL fields, verdicts, receipts, renderer, and storage
+- [Exam protocol](docs/EXAM.md): frozen claim-detector exam methodology and provenance controls
+- [Agent guide](AGENTS.md): repository map, commands, invariants, and change discipline
+
+## Core source
+
+- [CLI](bin/leadline.js)
+- [Planner](src/planner.js)
+- [Contract engine](src/contract-engine.js)
+- [Claude Code adapter](src/claude-code.js)
+- [Route tells](policy/tells.yaml)
+- [Family routes](policy/routes.yaml)
+- [Policy packs](policy/packs/)
+- [Policy-pack schema](schema/policy-pack.schema.json)
+- [Adapter-capabilities schema](schema/adapter-capabilities.schema.json)
+
+## Verified commands
+
+```bash
+npm install
+npm test
+npm run bench
+node ./bin/leadline.js init --claude-code --dry-run
+node ./bin/leadline.js trace --session <id>
+```
+
+## Current boundaries
+
+- No npm publication yet; `npx leadline` is not a current install path.
+- Claude Code has full enforcement. Codex, Cursor, Windsurf, and generic MCP-client adapters are roadmap work.
+- Project-local policy packs are supported; per-project route and tell configuration is not.
+- The hook loop has no LLM/network/telemetry path. Historical detector/evaluation tooling exists elsewhere in the repository and is not loaded by hooks.
